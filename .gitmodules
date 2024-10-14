@@ -1,0 +1,3 @@
+[submodule "VectorizedMultiAgentSimulator"]
+	path = VectorizedMultiAgentSimulator
+	url = https://github.com/proroklab/VectorizedMultiAgentSimulator.git
