@@ -9,7 +9,8 @@ import torch
 from vmas import make_env
 from vmas.simulator.core import Agent
 from vmas.simulator.utils import save_video
-from domain import Scenario
+from vmas.simulator.scenario import BaseScenario
+from salp_domain import SalpDomain
 
 
 def _get_deterministic_action(agent: Agent, continuous: bool, env):
@@ -25,13 +26,14 @@ def _get_deterministic_action(agent: Agent, continuous: bool, env):
 
 
 def use_vmas_env(
+    name: str="dummy",
     render: bool = False,
     save_render: bool = False,
     num_envs: int = 32,
-    n_steps: int = 10000,
+    n_steps: int = 1000,
     random_action: bool = False,
     device: str = "cpu",
-    scenario_name: str = "waterfall",
+    scenario: BaseScenario=None,
     continuous_actions: bool = True,
     visualize_render: bool = True,
     dict_spaces: bool = True,
@@ -41,7 +43,7 @@ def use_vmas_env(
 
     Args:
         continuous_actions (bool): Whether the agents have continuous or discrete actions
-        scenario_name (str): Name of scenario
+        scenario (BaseScenario): Scenario Class
         device (str): Torch device to use
         render (bool): Whether to render the scenario
         save_render (bool):  Whether to save render of the scenario
@@ -59,7 +61,7 @@ def use_vmas_env(
     assert not (save_render and not render), "To save the video you have to render it"
 
     env = make_env(
-        scenario=scenario_name,
+        scenario=scenario,
         num_envs=num_envs,
         device=device,
         continuous_actions=continuous_actions,
@@ -108,22 +110,24 @@ def use_vmas_env(
     total_time = time.time() - init_time
     print(
         f"It took: {total_time}s for {n_steps} steps of {num_envs} parallel environments on device {device} "
-        f"for {scenario_name} scenario."
+        f"for {name} scenario."
     )
 
     if render and save_render:
-        save_video(scenario_name, frame_list, fps=1 / env.scenario.world.dt)
+        save_video(name, frame_list, fps=1 / env.scenario.world.dt)
 
 
 if __name__ == "__main__":
-    scenario = Scenario()
+    scenario = SalpDomain()
     use_vmas_env(
-        scenario_name=scenario,
+        name="SalpDomain",
+        scenario=scenario,
         render=True,
-        save_render=False,
+        save_render=True,
         random_action=True,
         continuous_actions=True,
         device="cpu",
         # Environment specific
-        n_agents=3,
+        n_agents=4,
+        n_steps=200
     )

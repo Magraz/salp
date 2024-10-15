@@ -9,6 +9,7 @@ from torch import Tensor
 
 from vmas import render_interactively
 from vmas.simulator.controllers.velocity_controller import VelocityController
+from vmas.simulator.joints import Joint
 from vmas.simulator.core import Agent, Sphere, World
 from vmas.simulator.scenario import BaseScenario
 from vmas.simulator.utils import Color, ScenarioUtils, X, Y
@@ -50,10 +51,13 @@ def get_line_angle_dist_0_180(angle, goal):
     ).squeeze(-1)
 
 
-class Scenario(BaseScenario):
-    def make_world(self, batch_dim: int, device: torch.device, n_agents: int, **kwargs):
+class SalpDomain(BaseScenario):
+    def make_world(self, batch_dim: int, device: torch.device, **kwargs):
         self.plot_grid = True
         self.viewer_zoom = 2
+
+        self.n_agents = kwargs.pop("n_agents", 5)
+        self.with_joints = kwargs.pop("joints", True)
 
         # Reward
         self.vel_shaping_factor = kwargs.pop("vel_shaping_factor", 1)
@@ -87,24 +91,24 @@ class Scenario(BaseScenario):
 
         self.desired_distance = 1
         self.grid_spacing = self.desired_distance
+        self.agent_dist = 0.5
 
         # Make world
-        world = World(batch_dim, device, drag=0, linear_friction=0.1)
+        world = World(batch_dim, device, drag=0, linear_friction=0.1, substeps=5)
 
         self.desired_vel = torch.tensor(
             [0.0, self.desired_vel], device=device, dtype=torch.float32
         )
         self.max_pos = (self.horizon * world.dt) * self.desired_vel[Y]
         self.desired_pos = 10.0
-        self.n_agents = n_agents
 
         # Add agents
-        self.agents = []
-        for i in range(n_agents):
+        for i in range(self.n_agents):
 
             agent = Agent(
                 name=f"agent_{i}",
                 render_action=True,
+                rotatable=True,
                 shape=Sphere(radius=0.05),
                 u_range=self.u_range,
                 v_range=self.v_range,
@@ -115,7 +119,22 @@ class Scenario(BaseScenario):
                 agent, world, controller_params, "standard"
             )
             world.add_agent(agent)
-            self.agents.append(agent)
+        
+        #Add joints
+        for i in range(self.n_agents - 1):
+            joint = Joint(
+                world.agents[i],
+                world.agents[i + 1],
+                anchor_a=(1, 0),
+                anchor_b=(-1, 0),
+                dist=self.agent_dist,
+                rotate_a=True,
+                rotate_b=True,
+                collidable=True,
+                width=0,
+                mass=1,
+            )
+            world.add_joint(joint)
 
         for agent in world.agents:
             agent.wind_rew = torch.zeros(batch_dim, device=device)
@@ -135,7 +154,7 @@ class Scenario(BaseScenario):
             [0, -wind], device=self.world.device, dtype=torch.float32
         ).expand(self.world.batch_dim, self.world.dim_p)
 
-        for agent in self.agents:
+        for agent in self.world.agents:
             agent.gravity = self.wind
 
     def calc_agent_errors(
@@ -172,23 +191,23 @@ class Scenario(BaseScenario):
         pos_error = 0
         rot_error = 0
 
-        for i, agent in enumerate(self.agents):
+        for i, agent in enumerate(self.world.agents):
             # First agent only gets the distance error of one neighbor
             if i == 0:
                 dist_error, pos_error, rot_error = self.calc_agent_errors(
-                    agent, self.agents[i + 1]
+                    agent, self.world.agents[i + 1]
                 )
             # Last agent only gets the distance error of one neighbor
             elif i == self.n_agents - 1:
                 dist_error, pos_error, rot_error = self.calc_agent_errors(
-                    agent, self.agents[i - 1]
+                    agent, self.world.agents[i - 1]
                 )
             # Middle agents get error from 2 neighbor agents
             else:
 
                 for offset in [-1, 1]:
                     temp_dist_error, temp_pos_error, temp_rot_error = (
-                        self.calc_agent_errors(agent, self.agents[i + offset])
+                        self.calc_agent_errors(agent, self.world.agents[i + offset])
                     )
 
                     dist_error += temp_dist_error
@@ -371,7 +390,7 @@ class Scenario(BaseScenario):
     def set_friction(self):
         dist_to_goal_angle = (
             get_line_angle_dist_0_360(
-                self.get_agents_angle(self.agents[0], self.agents[-1]),
+                self.get_agents_angle(self.world.agents[0], self.world.agents[-1]),
                 torch.tensor([-torch.pi / 2], device=self.world.device).expand(
                     self.world.batch_dim, 1
                 ),
@@ -383,7 +402,7 @@ class Scenario(BaseScenario):
         dist_to_goal_angle = (dist_to_goal_angle - 1 + self.cover_angle_tolerance) / (
             self.cover_angle_tolerance
         )  # Between 1 and 0
-        for agent in self.agents:
+        for agent in self.world.agents:
             agent.gravity = self.wind * dist_to_goal_angle
 
     def observation(self, agent: Agent):
@@ -424,58 +443,5 @@ class Scenario(BaseScenario):
             ),
         }
 
-    def extra_render(self, env_index: int = 0) -> "List[Geom]":
-        from vmas.simulator import rendering
-
-        geoms = []
-        # Trajectory vel
-        color = Color.BLACK.value
-
-        circles = []
-        xform = rendering.Transform()
-        for i, agent in enumerate(self.agents):
-            if i != self.n_agents - 1:
-                xform.set_translation(
-                    *(
-                        (
-                            agent.state.pos[env_index]
-                            + self.agents[i + 1].state.pos[env_index]
-                        )
-                        / 2
-                    )
-                )
-                xform.set_rotation(
-                    self.get_agents_angle(agent, self.agents[i + 1])[env_index]
-                )
-
-                circles.append(
-                    rendering.Line(
-                        (-self.desired_distance / 2, 0),
-                        (self.desired_distance / 2, 0),
-                        width=1,
-                    )
-                )
-
-        for circle in circles:
-            circle.add_attr(xform)
-            circle.set_color(*color)
-            geoms.append(circle)
-
-        # Y line
-        color = Color.RED.value
-        circle = rendering.Line(
-            (-self.desired_distance / 2, 0),
-            (self.desired_distance / 2, 0),
-            width=1,
-        )
-        xform = rendering.Transform()
-        xform.set_translation(0.0, self.max_pos)
-        circle.add_attr(xform)
-        circle.set_color(*color)
-        geoms.append(circle)
-
-        return geoms
-
-
 if __name__ == "__main__":
-    render_interactively(__file__, control_two_agents=True)
+    render_interactively(__file__, control_two_agents=True, joints=True)
