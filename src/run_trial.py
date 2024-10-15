@@ -124,7 +124,7 @@ if __name__ == "__main__":
         name=f"SalpDomain_{n_agents}a",
         scenario=scenario,
         render=True,
-        save_render=True,
+        save_render=False,
         random_action=True,
         continuous_actions=True,
         device="cpu",

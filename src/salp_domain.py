@@ -54,9 +54,9 @@ def get_line_angle_dist_0_180(angle, goal):
 class SalpDomain(BaseScenario):
     def make_world(self, batch_dim: int, device: torch.device, **kwargs):
         self.plot_grid = True
-        self.viewer_zoom = 2
+        self.viewer_zoom = 1.1
 
-        self.n_agents = kwargs.pop("n_agents", 5)
+        self.n_agents = kwargs.pop("n_agents", 3)
         self.with_joints = kwargs.pop("joints", True)
 
         # Reward
@@ -91,10 +91,10 @@ class SalpDomain(BaseScenario):
 
         self.desired_distance = 1
         self.grid_spacing = self.desired_distance
-        self.agent_dist = 0.5
+        self.agent_dist = 0.2
 
         # Make world
-        world = World(batch_dim, device, drag=0, linear_friction=0.1, substeps=5)
+        world = World(batch_dim, device, drag=0, linear_friction=0.1, substeps=10)
 
         self.desired_vel = torch.tensor(
             [0.0, self.desired_vel], device=device, dtype=torch.float32
@@ -108,7 +108,6 @@ class SalpDomain(BaseScenario):
             agent = Agent(
                 name=f"agent_{i}",
                 render_action=True,
-                rotatable=True,
                 shape=Sphere(radius=0.05),
                 u_range=self.u_range,
                 v_range=self.v_range,
@@ -125,13 +124,13 @@ class SalpDomain(BaseScenario):
             joint = Joint(
                 world.agents[i],
                 world.agents[i + 1],
-                anchor_a=(1, 0),
-                anchor_b=(-1, 0),
+                anchor_a=(0, 0),
+                anchor_b=(0, 0),
                 dist=self.agent_dist,
-                rotate_a=True,
-                rotate_b=True,
+                rotate_a=False,
+                rotate_b=False,
                 collidable=True,
-                width=0,
+                width=0.01,
                 mass=1,
             )
             world.add_joint(joint)
@@ -226,8 +225,8 @@ class SalpDomain(BaseScenario):
             device=self.world.device,
             dtype=torch.float32,
         ).uniform_(
-            -torch.pi / 8,
-            torch.pi / 8,
+            -torch.pi,
+            torch.pi,
         )
 
         start_delta_x = (self.desired_distance / 2) * torch.cos(start_angle)
@@ -235,8 +234,16 @@ class SalpDomain(BaseScenario):
 
         order = torch.randperm(self.n_agents).tolist()
         agents = [self.world.agents[i] for i in order]
+        positions = [(0+i*self.agent_dist,0) for i in range(self.n_agents)]
         for i, agent in enumerate(agents):
             agent.controller.reset(env_index)
+
+            # for pos in positions:
+            #     agent.set_pos(
+            #         torch.cat([torch.tensor([1,pos[0]]), torch.tensor([1,pos[1]])], dim=1),
+            #         batch_index=env_index,
+            #     )
+           
             if i == 0:
                 agent.set_pos(
                     -torch.cat([start_delta_x, start_delta_y], dim=1),
