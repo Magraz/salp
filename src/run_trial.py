@@ -114,13 +114,14 @@ def use_vmas_env(
     )
 
     if render and save_render:
-        save_video(name, frame_list, fps=1 / env.scenario.world.dt)
+        save_video(name, frame_list, fps=10 / env.scenario.world.dt)
 
 
 if __name__ == "__main__":
     scenario = SalpDomain()
+    n_agents = 6
     use_vmas_env(
-        name="SalpDomain",
+        name=f"SalpDomain_{n_agents}a",
         scenario=scenario,
         render=True,
         save_render=True,
@@ -128,6 +129,6 @@ if __name__ == "__main__":
         continuous_actions=True,
         device="cpu",
         # Environment specific
-        n_agents=4,
-        n_steps=200
+        n_agents=n_agents,
+        n_steps=400
     )
