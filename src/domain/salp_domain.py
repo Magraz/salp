@@ -56,6 +56,8 @@ class SalpDomain(BaseScenario):
         self.plot_grid = True
         self.viewer_zoom = 1.1
 
+        self.step_counter = 0
+
         self.n_agents = kwargs.pop("n_agents", 3)
         self.with_joints = kwargs.pop("joints", True)
 
@@ -94,7 +96,7 @@ class SalpDomain(BaseScenario):
         self.agent_dist = 0.2
 
         # Make world
-        world = World(batch_dim, device, drag=0, linear_friction=0.1, substeps=10)
+        world = World(batch_dim, device, drag=0, linear_friction=0.1, substeps=5)
 
         self.desired_vel = torch.tensor(
             [0.0, self.desired_vel], device=device, dtype=torch.float32
@@ -118,8 +120,9 @@ class SalpDomain(BaseScenario):
                 agent, world, controller_params, "standard"
             )
             world.add_agent(agent)
-        
-        #Add joints
+
+        # Add joints
+        self.joint_list = []
         for i in range(self.n_agents - 1):
             joint = Joint(
                 world.agents[i],
@@ -134,6 +137,9 @@ class SalpDomain(BaseScenario):
                 mass=1,
             )
             world.add_joint(joint)
+            self.joint_list.append(joint)
+
+        # world.attach_joint(joint_list[0])
 
         for agent in world.agents:
             agent.wind_rew = torch.zeros(batch_dim, device=device)
@@ -234,26 +240,28 @@ class SalpDomain(BaseScenario):
 
         order = torch.randperm(self.n_agents).tolist()
         agents = [self.world.agents[i] for i in order]
-        positions = [(0+i*self.agent_dist,0) for i in range(self.n_agents)]
+        positions = [
+            torch.tensor((0 + i * self.agent_dist, 0)) for i in range(self.n_agents)
+        ]
         for i, agent in enumerate(agents):
             agent.controller.reset(env_index)
 
-            # for pos in positions:
+            for pos in positions:
+                agent.set_pos(
+                    pos,
+                    batch_index=env_index,
+                )
+
+            # if i == 0:
             #     agent.set_pos(
-            #         torch.cat([torch.tensor([1,pos[0]]), torch.tensor([1,pos[1]])], dim=1),
+            #         -torch.cat([start_delta_x, start_delta_y], dim=1),
             #         batch_index=env_index,
             #     )
-           
-            if i == 0:
-                agent.set_pos(
-                    -torch.cat([start_delta_x, start_delta_y], dim=1),
-                    batch_index=env_index,
-                )
-            else:
-                agent.set_pos(
-                    torch.cat([start_delta_x, start_delta_y], dim=1),
-                    batch_index=env_index,
-                )
+            # else:
+            #     agent.set_pos(
+            #         torch.cat([start_delta_x, start_delta_y], dim=1),
+            #         batch_index=env_index,
+            #     )
 
             if env_index is None:
                 agent.vel_shaping = (
@@ -413,6 +421,29 @@ class SalpDomain(BaseScenario):
             agent.gravity = self.wind * dist_to_goal_angle
 
     def observation(self, agent: Agent):
+        self.step_counter += 1
+
+        if self.step_counter == 300:
+            self.world.detach_joint(self.joint_list[1])
+
+        if self.step_counter == 600:
+            joint = Joint(
+                self.world.agents[1],
+                self.world.agents[2],
+                anchor_a=(0, 0),
+                anchor_b=(0, 0),
+                dist=self.agent_dist,
+                rotate_a=False,
+                rotate_b=False,
+                collidable=True,
+                width=0.01,
+                mass=1,
+            )
+            self.world.add_joint(joint)
+
+        # if self.step_counter == 400:
+        #     self.world.attach_joint(self.joint_list[0])
+
         observations = []
         if self.observe_pos:
             observations.append(agent.state.pos)
@@ -449,6 +480,7 @@ class SalpDomain(BaseScenario):
                 agent.state.vel - self.desired_vel, dim=-1
             ),
         }
+
 
 if __name__ == "__main__":
     render_interactively(__file__, control_two_agents=True, joints=True)

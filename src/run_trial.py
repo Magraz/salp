@@ -10,7 +10,7 @@ from vmas import make_env
 from vmas.simulator.core import Agent
 from vmas.simulator.utils import save_video
 from vmas.simulator.scenario import BaseScenario
-from salp_domain import SalpDomain
+from domain.salp_domain import SalpDomain
 
 
 def _get_deterministic_action(agent: Agent, continuous: bool, env):
@@ -26,14 +26,14 @@ def _get_deterministic_action(agent: Agent, continuous: bool, env):
 
 
 def use_vmas_env(
-    name: str="dummy",
+    name: str = "dummy",
     render: bool = False,
     save_render: bool = False,
     num_envs: int = 32,
     n_steps: int = 1000,
     random_action: bool = False,
     device: str = "cpu",
-    scenario: BaseScenario=None,
+    scenario: BaseScenario = None,
     continuous_actions: bool = True,
     visualize_render: bool = True,
     dict_spaces: bool = True,
@@ -114,21 +114,22 @@ def use_vmas_env(
     )
 
     if render and save_render:
-        save_video(name, frame_list, fps=10 / env.scenario.world.dt)
+        save_video(name, frame_list, fps=1 / env.scenario.world.dt)
 
 
 if __name__ == "__main__":
     scenario = SalpDomain()
-    n_agents = 6
+    n_agents = 4
+
     use_vmas_env(
         name=f"SalpDomain_{n_agents}a",
         scenario=scenario,
         render=True,
-        save_render=False,
+        save_render=True,
         random_action=True,
         continuous_actions=True,
         device="cpu",
         # Environment specific
         n_agents=n_agents,
-        n_steps=400
+        n_steps=200,
     )
