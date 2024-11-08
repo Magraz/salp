@@ -11,6 +11,8 @@ from vmas.simulator.core import Agent
 from vmas.simulator.utils import save_video
 from vmas.simulator.scenario import BaseScenario
 from domain.salp_domain import SalpDomain
+from testing.manual_control import manual_control
+from pynput.keyboard import Listener
 
 
 def _get_deterministic_action(agent: Agent, continuous: bool, env):
@@ -29,7 +31,7 @@ def use_vmas_env(
     name: str = "dummy",
     render: bool = False,
     save_render: bool = False,
-    num_envs: int = 32,
+    num_envs: int = 3,
     n_steps: int = 1000,
     random_action: bool = False,
     device: str = "cpu",
@@ -71,41 +73,44 @@ def use_vmas_env(
         # Environment specific variables
         **kwargs,
     )
+    mc = manual_control(kwargs.pop("n_agents", 0))
 
     frame_list = []  # For creating a gif
     init_time = time.time()
     step = 0
+    with Listener(on_press=mc.on_press, on_release=mc.on_release) as listener:
+        listener.join(timeout=1)
+        for _ in range(n_steps):
+            step += 1
+            print(f"Step {step}")
 
-    for _ in range(n_steps):
-        step += 1
-        print(f"Step {step}")
+            # VMAS actions can be either a list of tensors (one per agent)
+            # or a dict of tensors (one entry per agent with its name as key)
+            # Both action inputs can be used independently of what type of space its chosen
 
-        # VMAS actions can be either a list of tensors (one per agent)
-        # or a dict of tensors (one entry per agent with its name as key)
-        # Both action inputs can be used independently of what type of space its chosen
-        dict_actions = random.choice([True, False])
+            actions = []
+            for i, agent in enumerate(env.agents):
 
-        actions = {} if dict_actions else []
-        for agent in env.agents:
-            if not random_action:
-                action = _get_deterministic_action(agent, continuous_actions, env)
-            else:
-                action = env.get_random_action(agent)
-            if dict_actions:
-                actions.update({agent.name: action})
-            else:
+                if not random_action:
+                    if i == mc.controlled_agent:
+                        action = torch.tensor(mc.cmd_vel).repeat(num_envs, 1)
+                    else:
+                        action = torch.tensor([0.0, 0.0]).repeat(num_envs, 1)
+                else:
+                    action = env.get_random_action(agent)
+
                 actions.append(action)
 
-        obs, rews, dones, info = env.step(actions)
+            obs, rews, dones, info = env.step(actions)
 
-        if render:
-            frame = env.render(
-                mode="rgb_array",
-                agent_index_focus=None,  # Can give the camera an agent index to focus on
-                visualize_when_rgb=visualize_render,
-            )
-            if save_render:
-                frame_list.append(frame)
+            if render:
+                frame = env.render(
+                    mode="rgb_array",
+                    agent_index_focus=None,  # Can give the camera an agent index to focus on
+                    visualize_when_rgb=visualize_render,
+                )
+                if save_render:
+                    frame_list.append(frame)
 
     total_time = time.time() - init_time
     print(
@@ -119,18 +124,18 @@ def use_vmas_env(
 
 if __name__ == "__main__":
     scenario = SalpDomain()
-    n_agents = 4
+    n_agents = 2
 
     use_vmas_env(
         name=f"SalpDomain_{n_agents}a",
         scenario=scenario,
         render=True,
         save_render=True,
-        random_action=True,
+        random_action=False,
         continuous_actions=True,
         device="cpu",
         # Environment specific
         n_agents=n_agents,
-        n_steps=200,
+        n_steps=10000,
         wind=0,
     )

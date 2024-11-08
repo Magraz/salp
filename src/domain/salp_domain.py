@@ -119,6 +119,7 @@ class SalpDomain(BaseScenario):
                 f_range=self.f_range,
                 gravity=self.wind,
             )
+            agent.join = 1
             agent.controller = VelocityController(
                 agent, world, controller_params, "standard"
             )
@@ -426,35 +427,39 @@ class SalpDomain(BaseScenario):
     def observation(self, agent: Agent):
         self.step_counter += 1
 
-        if self.step_counter == 300:
-            self.world.detach_joint(self.joint_list[1])
+        # if self.step_counter == 300:
+        #     self.world.detach_joint(self.joint_list[0])
 
-        if self.step_counter == 600:
-            joint = Joint(
-                self.world.agents[1],
-                self.world.agents[2],
-                anchor_a=(0, 0),
-                anchor_b=(0, 0),
-                dist=self.agent_dist,
-                rotate_a=False,
-                rotate_b=False,
-                collidable=True,
-                width=0.01,
-                mass=1,
-            )
-            self.world.add_joint(joint)
+        # if self.step_counter == 600:
+        #     joint = Joint(
+        #         self.world.agents[0],
+        #         self.world.agents[1],
+        #         anchor_a=(0, 0),
+        #         anchor_b=(0, 0),
+        #         dist=self.agent_dist,
+        #         rotate_a=False,
+        #         rotate_b=False,
+        #         collidable=True,
+        #         width=0.01,
+        #         mass=1,
+        #     )
+        #     self.world.add_joint(joint)
 
         # if self.step_counter == 400:
         #     self.world.attach_joint(self.joint_list[0])
 
         observations = []
+
         if self.observe_pos:
             observations.append(agent.state.pos)
+
         observations.append(agent.state.vel)
+
         if self.observe_rel_pos:
             for a in self.world.agents:
                 if a != agent:
                     observations.append(a.state.pos - agent.state.pos)
+
         if self.observe_rel_vel:
             for a in self.world.agents:
                 if a != agent:
