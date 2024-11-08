@@ -132,4 +132,5 @@ if __name__ == "__main__":
         # Environment specific
         n_agents=n_agents,
         n_steps=200,
+        wind=0,
     )

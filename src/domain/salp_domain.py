@@ -10,9 +10,10 @@ from torch import Tensor
 from vmas import render_interactively
 from vmas.simulator.controllers.velocity_controller import VelocityController
 from vmas.simulator.joints import Joint
-from vmas.simulator.core import Agent, Sphere, World
+from vmas.simulator.core import Agent, Sphere
+from domain.custom_world import SalpWorld
 from vmas.simulator.scenario import BaseScenario
-from vmas.simulator.utils import Color, ScenarioUtils, X, Y
+from vmas.simulator.utils import ScenarioUtils, X, Y
 
 if typing.TYPE_CHECKING:
     from vmas.simulator.rendering import Geom
@@ -96,7 +97,9 @@ class SalpDomain(BaseScenario):
         self.agent_dist = 0.2
 
         # Make world
-        world = World(batch_dim, device, drag=0, linear_friction=0.1, substeps=5)
+        world = SalpWorld(
+            batch_dim=batch_dim, device=device, drag=0, linear_friction=0.1, substeps=5
+        )
 
         self.desired_vel = torch.tensor(
             [0.0, self.desired_vel], device=device, dtype=torch.float32
