@@ -2,8 +2,8 @@ import os
 import yaml
 import torch
 from pathlib import Path
-from vmas_rovers.learning.ccea.ccea import CooperativeCoevolutionaryAlgorithm
-from vmas_rovers.learning.ccea.dataclasses import ExperimentConfig, EnvironmentConfig
+from vmas_salp.learning.ccea.ccea import CooperativeCoevolutionaryAlgorithm
+from vmas_salp.learning.ccea.dataclasses import ExperimentConfig, EnvironmentConfig
 from dataclasses import asdict
 
 

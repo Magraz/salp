@@ -4,11 +4,11 @@ from random import sample
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
-from vmas_rovers.fitness_critic.models.mlp import MLP_Model
-from vmas_rovers.fitness_critic.models.attention import Attention_Model
-from vmas_rovers.fitness_critic.models.gru import GRU_Model
-from vmas_rovers.learning.ccea.types import FitnessCriticType
-from vmas_rovers.utils.loss_functions import alignment_loss
+from vmas_salp.fitness_critic.models.mlp import MLP_Model
+from vmas_salp.fitness_critic.models.attention import Attention_Model
+from vmas_salp.fitness_critic.models.gru import GRU_Model
+from vmas_salp.learning.ccea.types import FitnessCriticType
+from vmas_salp.utils.loss_functions import alignment_loss
 
 
 class TrajectoryRewardDataset(Dataset):

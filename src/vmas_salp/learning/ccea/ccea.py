@@ -8,20 +8,24 @@ import random
 from vmas.simulator.environment import Environment
 from vmas.simulator.utils import save_video
 
-from policies.mlp import MLP_Policy
-from policies.gru import GRU_Policy
-from policies.cnn import CNN_Policy
+from vmas_salp.policies.mlp import MLP_Policy
+from vmas_salp.policies.gru import GRU_Policy
+from vmas_salp.policies.cnn import CNN_Policy
 
-from fitness_critic.fitness_critic import FitnessCritic
-from domain.create_env import create_env
-from learning.ccea.selection import (
+from vmas_salp.fitness_critic.fitness_critic import FitnessCritic
+from vmas_salp.domain.create_env import create_env
+from vmas_salp.learning.ccea.selection import (
     binarySelection,
     epsilonGreedySelection,
     softmaxSelection,
 )
-from learning.ccea.types import JointTrajectory, Team, EvalInfo
-from learning.ccea.dataclasses import CCEAConfig, PolicyConfig, FitnessCriticConfig
-from learning.ccea.types import (
+from vmas_salp.learning.ccea.types import JointTrajectory, Team, EvalInfo
+from vmas_salp.learning.ccea.dataclasses import (
+    CCEAConfig,
+    PolicyConfig,
+    FitnessCriticConfig,
+)
+from vmas_salp.learning.ccea.types import (
     PolicyEnum,
     SelectionEnum,
     FitnessShapingEnum,
