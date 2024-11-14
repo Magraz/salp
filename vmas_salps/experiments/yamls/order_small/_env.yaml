@@ -1,0 +1,56 @@
+map_size: [2.0, 2.0]
+use_order: True
+obs_space_dim: 8
+action_space_dim: 2
+
+rovers:
+  - observation_radius: 1
+    type: 0
+    color: "RED"
+    position:
+      spawn_rule: fixed
+      coordinates: [0.0, 0.0]
+  
+  - observation_radius: 1
+    type: 0
+    color: "BLACK"
+    position:
+      spawn_rule: fixed
+      coordinates: [0.0, 0.0]
+
+pois:
+  - value: 2.0
+    coupling: 1
+    observation_radius: 0.15
+    type: 0
+    order: 0
+    position:
+      spawn_rule: fixed
+      coordinates: [-0.25, -0.5]
+  
+  - value: 4.0
+    coupling: 1
+    observation_radius: 0.15
+    type: 0
+    order: 1
+    position:
+      spawn_rule: fixed
+      coordinates: [-0.5, 0.25]
+  
+  - value: 3.0
+    coupling: 1
+    observation_radius: 0.15
+    type: 0
+    order: 2
+    position:
+      spawn_rule: fixed
+      coordinates: [0.25, 0.5]
+  
+  - value: 1.0
+    coupling: 1
+    observation_radius: 0.15
+    type: 0
+    order: 3
+    position:
+      spawn_rule: fixed
+      coordinates: [0.5, -0.25]

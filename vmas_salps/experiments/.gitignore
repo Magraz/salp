@@ -1,0 +1,4 @@
+completed*
+results*
+*.yaml
+!_env.yaml
