@@ -7,7 +7,7 @@ class manual_control:
         self.controlled_agent = 0
         self.n_agents = n_agents
         self.cmd_vel = [0, 0]
-        self.join = 0
+        self.join = [0]
         self.speed = 0.25
 
     def on_press(self, key):
@@ -15,15 +15,15 @@ class manual_control:
         try:
             match (key.char):
                 case "w":
-                    self.cmd_vel = [0.0, self.speed]
-                case "a":
-                    self.cmd_vel = [-self.speed, 0.0]
-                case "s":
-                    self.cmd_vel = [0.0, -self.speed]
-                case "d":
                     self.cmd_vel = [self.speed, 0.0]
+                # case "a":
+                #     self.cmd_vel = [-self.speed, 0.0]
+                # case "d":
+                #     self.cmd_vel = [self.speed, 0.0]
+                case "s":
+                    self.cmd_vel = [-self.speed, 0.0]
                 case "j":
-                    self.join = 0 if self.join else 1
+                    self.join = [0] if self.join[0] else [1]
 
         except AttributeError:
             pass

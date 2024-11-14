@@ -15,18 +15,6 @@ from testing.manual_control import manual_control
 from pynput.keyboard import Listener
 
 
-def _get_deterministic_action(agent: Agent, continuous: bool, env):
-    if continuous:
-        action = -agent.action.u_range_tensor.expand(env.batch_dim, agent.action_size)
-    else:
-        action = (
-            torch.tensor([1], device=env.device, dtype=torch.long)
-            .unsqueeze(-1)
-            .expand(env.batch_dim, 1)
-        )
-    return action.clone()
-
-
 def use_vmas_env(
     name: str = "dummy",
     render: bool = False,
@@ -36,9 +24,7 @@ def use_vmas_env(
     random_action: bool = False,
     device: str = "cpu",
     scenario: BaseScenario = None,
-    continuous_actions: bool = True,
     visualize_render: bool = True,
-    dict_spaces: bool = True,
     **kwargs,
 ):
     """Example function to use a vmas environment
@@ -66,8 +52,6 @@ def use_vmas_env(
         scenario=scenario,
         num_envs=num_envs,
         device=device,
-        continuous_actions=continuous_actions,
-        dict_spaces=dict_spaces,
         wrapper=None,
         seed=None,
         # Environment specific variables
@@ -77,12 +61,10 @@ def use_vmas_env(
 
     frame_list = []  # For creating a gif
     init_time = time.time()
-    step = 0
+
     with Listener(on_press=mc.on_press, on_release=mc.on_release) as listener:
         listener.join(timeout=1)
         for _ in range(n_steps):
-            step += 1
-            print(f"Step {step}")
 
             # VMAS actions can be either a list of tensors (one per agent)
             # or a dict of tensors (one entry per agent with its name as key)
@@ -93,9 +75,10 @@ def use_vmas_env(
 
                 if not random_action:
                     if i == mc.controlled_agent:
-                        action = torch.tensor(mc.cmd_vel).repeat(num_envs, 1)
+                        cmd_action = mc.cmd_vel[:] + mc.join[:]
+                        action = torch.tensor(cmd_action).repeat(num_envs, 1)
                     else:
-                        action = torch.tensor([0.0, 0.0]).repeat(num_envs, 1)
+                        action = torch.tensor([0.0, 0.0, 0.0]).repeat(num_envs, 1)
                 else:
                     action = env.get_random_action(agent)
 
@@ -130,9 +113,8 @@ if __name__ == "__main__":
         name=f"SalpDomain_{n_agents}a",
         scenario=scenario,
         render=True,
-        save_render=True,
+        save_render=False,
         random_action=False,
-        continuous_actions=True,
         device="cpu",
         # Environment specific
         n_agents=n_agents,
