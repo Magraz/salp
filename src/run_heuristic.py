@@ -54,11 +54,6 @@ def use_vmas_env(
     n_agents = kwargs.pop("n_agents", 0)
 
     mc = manual_control(n_agents)
-    policy = HeuristicPolicy(
-        continuous_action=True,
-        device=device,
-        targets_positions=kwargs.pop("targets_positions", []),
-    )
 
     G_total = torch.zeros((n_agents, n_envs)).to(device)
     D_total = torch.zeros((n_agents, n_envs)).to(device)
@@ -77,17 +72,11 @@ def use_vmas_env(
 
             for i, agent in enumerate(env.agents):
 
-                if use_heuristic:
-                    action = policy.compute_action(
-                        agent_position=agent.state.pos,
-                        observation=env.scenario.observation(agent),
-                        u_range=agent.action.u_range,
-                    )
+                if i == mc.controlled_agent:
+                    cmd_action = mc.cmd_vel[:] + mc.join[:]
+                    action = torch.tensor(cmd_action).repeat(n_envs, 1)
                 else:
-                    if i == mc.controlled_agent:
-                        action = torch.tensor(mc.command).repeat(n_envs, 1)
-                    else:
-                        action = torch.tensor([0.0, 0.0]).repeat(n_envs, 1)
+                    action = torch.tensor([0.0, 0.0, 0.0]).repeat(n_envs, 1)
 
                 actions.append(action)
 
@@ -97,24 +86,18 @@ def use_vmas_env(
             obs_list.append(obs[0][0])
 
             G_list.append(torch.stack([g[:n_envs] for g in rews], dim=0)[0])
-            D_list.append(torch.stack([g[n_envs : n_envs * 2] for g in rews], dim=0))
 
             G_total += torch.stack([g[:n_envs] for g in rews], dim=0)
-            D_total += torch.stack([g[n_envs : n_envs * 2] for g in rews], dim=0)
 
             G = torch.stack([g[:n_envs] for g in rews], dim=0)
-            D = torch.stack([g[n_envs : n_envs * 2] for g in rews], dim=0)
 
             if any(tensor.any() for tensor in rews):
                 print("G")
                 print(G)
-                print("D")
-                print(D)
 
                 # print("Total G")
                 # print(G_total)
-                # print("Total D")
-                # print(D_total)
+
                 pass
 
             if render:
@@ -183,15 +166,15 @@ if __name__ == "__main__":
         env_config = yaml.safe_load(file)
 
     # Environment data
-    map_size = env_config["env"]["map_size"]
+    map_size = env_config["map_size"]
 
     # Agent data
-    n_agents = len(env_config["env"]["rovers"])
-    agents_positions = [poi["position"]["fixed"] for poi in env_config["env"]["rovers"]]
-    lidar_range = [rover["observation_radius"] for rover in env_config["env"]["rovers"]]
+    n_agents = len(env_config["rovers"])
+    agents_positions = [poi["position"]["coordinates"] for poi in env_config["rovers"]]
+    lidar_range = [rover["observation_radius"] for rover in env_config["rovers"]]
 
     # POIs data
-    poi_positions = [poi["position"]["fixed"] for poi in env_config["env"]["pois"]]
+    poi_positions = [poi["position"]["coordinates"] for poi in env_config["pois"]]
     n_envs = 3
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -200,7 +183,6 @@ if __name__ == "__main__":
         env=create_env(batch_dir=batch_dir, n_envs=n_envs, device=device),
         render=True,
         save_render=False,
-        continuous_action=True,
         device=device,
         n_envs=n_envs,
         n_steps=10000,

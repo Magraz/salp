@@ -9,95 +9,85 @@ from torch import Tensor
 
 from vmas import render_interactively
 from vmas.simulator.joints import Joint
-from vmas.simulator.core import Agent, Box
+from vmas.simulator.core import Agent, Landmark, Box, Sphere
 from vmas.simulator.scenario import BaseScenario
-from vmas.simulator.utils import ScenarioUtils, X, Y
+from vmas.simulator.utils import ScenarioUtils
+
 from domain.custom_world import SalpWorld
 from domain.dynamics import SalpDynamics
 from domain.controller import SalpController
+from domain.utils import COLOR_MAP
 
 if typing.TYPE_CHECKING:
     from vmas.simulator.rendering import Geom
 
 
-def angle_to_vector(angle):
-    return torch.cat([torch.cos(angle), torch.sin(angle)], dim=1)
-
-
-def get_line_angle_0_90(rot: Tensor):
-    angle = torch.abs(rot) % torch.pi
-    other_angle = torch.pi - angle
-    return torch.minimum(angle, other_angle)
-
-
-def get_line_angle_0_180(rot):
-    angle = rot % torch.pi
-    return angle
-
-
-def get_line_angle_dist_0_360(angle, goal):
-    angle = angle_to_vector(angle)
-    goal = angle_to_vector(goal)
-    return -torch.einsum("bs,bs->b", angle, goal)
-
-
-def get_line_angle_dist_0_180(angle, goal):
-    angle = get_line_angle_0_180(angle)
-    goal = get_line_angle_0_180(goal)
-    return torch.minimum(
-        (angle - goal).abs(),
-        torch.minimum(
-            (angle - (goal - torch.pi)).abs(),
-            ((angle - torch.pi) - goal).abs(),
-        ),
-    ).squeeze(-1)
-
-
 class SalpDomain(BaseScenario):
     def make_world(self, batch_dim: int, device: torch.device, **kwargs):
-        self.plot_grid = True
-        self.viewer_zoom = 1.1
+        self.x_semidim = kwargs.pop("x_semidim", 1)
+        self.y_semidim = kwargs.pop("y_semidim", 1)
 
-        self.step_counter = 0
+        self.viewer_zoom = kwargs.pop("viewer_zoom", 1)
 
-        self.n_agents = kwargs.pop("n_agents", 3)
-        self.with_joints = kwargs.pop("joints", True)
+        self.n_agents = kwargs.pop("n_agents", 5)
+        self.agents_colors = kwargs.pop("agents_colors", [])
+        self.n_targets = kwargs.pop("n_targets", 7)
+        self.use_order = kwargs.pop("use_order", False)
+        self.targets_positions = kwargs.pop("targets_positions", [])
+        self.targets_colors = kwargs.pop("targets_colors", [])
+        self.targets_values = torch.tensor(
+            kwargs.pop("targets_values", []), device=device
+        )
+        self.agents_positions = kwargs.pop("agents_positions", [])
 
-        # Reward
-        self.observe_rel_pos = kwargs.pop("observe_rel_pos", False)
-        self.observe_rel_vel = kwargs.pop("observe_rel_vel", False)
-        self.observe_pos = kwargs.pop("observe_pos", True)
+        self._min_dist_between_entities = kwargs.pop("min_dist_between_entities", 0.2)
+        self._lidar_range = kwargs.pop("lidar_range", 0.35)
+        self._covering_range = kwargs.pop("covering_range", 0.25)
 
-        # Controller
-        self.use_controller = kwargs.pop("use_controller", False)
-
-        self.v_range = kwargs.pop("v_range", 1.0)
-        self.desired_vel = kwargs.pop("desired_vel", self.v_range)
-        self.f_range = kwargs.pop("f_range", 1)
-
-        controller_params = [1.5, 0.6, 0.002]
-
-        self.u_range = self.v_range if self.use_controller else self.f_range
+        self._agents_per_target = kwargs.pop("agents_per_target", 2)
+        self.targets_respawn = kwargs.pop("targets_respawn", False)
+        self.random_spawn = kwargs.pop("random_spawn", False)
 
         ScenarioUtils.check_kwargs_consumed(kwargs)
 
-        self.desired_distance = 1
-        self.grid_spacing = self.desired_distance
+        self.agent_radius = 0.05
+        self.target_radius = self.agent_radius
+
+        self.device = device
+
+        self.global_rew = torch.zeros(batch_dim, device=device)
+        self.covered_targets = torch.zeros((batch_dim, self.n_targets), device=device)
+
+        # CONSTANTS
         self.agent_dist = 0.2
+        self.v_range = kwargs.pop("v_range", 1.0)
+        self.f_range = kwargs.pop("f_range", 1)
+        self.u_range = self.f_range
 
         # Make world
         world = SalpWorld(
             batch_dim=batch_dim,
+            x_semidim=self.x_semidim,
+            y_semidim=self.y_semidim,
             device=device,
-            drag=0.25,
-            linear_friction=0.1,
             substeps=5,
         )
 
-        self.desired_vel = torch.tensor(
-            [0.0, self.desired_vel], device=device, dtype=torch.float32
-        )
-        self.desired_pos = 10.0
+        # Set targets
+        self._targets = []
+        for i in range(self.n_targets):
+
+            target = Landmark(
+                name=f"target_{i}",
+                collide=False,
+                shape=Sphere(radius=self.target_radius),
+                color=COLOR_MAP[self.targets_colors[i]],
+            )
+
+            target.value = self.targets_values[i]
+
+            world.add_landmark(target)
+            self._targets.append(target)
 
         # Add agents
         for i in range(self.n_agents):
@@ -105,18 +95,12 @@ class SalpDomain(BaseScenario):
             agent = Agent(
                 name=f"agent_{i}",
                 render_action=True,
-                shape=Box(length=0.05, width=0.1),
-                u_range=self.u_range,
-                v_range=self.v_range,
-                f_range=self.f_range,
+                shape=Sphere(radius=0.05),
                 dynamics=SalpDynamics(),
-                collide=False,
+                collide=True,
             )
 
             agent.state.join = torch.zeros(batch_dim)
-            agent.controller = SalpController(
-                agent, world, controller_params, "standard"
-            )
             world.add_agent(agent)
 
         # Add joints
@@ -130,7 +114,7 @@ class SalpDomain(BaseScenario):
                 dist=self.agent_dist,
                 rotate_a=False,
                 rotate_b=False,
-                collidable=False,
+                collidable=True,
                 width=0,
             )
             world.add_joint(joint)
@@ -146,39 +130,112 @@ class SalpDomain(BaseScenario):
 
     def reset_world_at(self, env_index: int = None):
 
-        order = torch.randperm(self.n_agents).tolist()
-        agents = [self.world.agents[i] for i in order]
-        positions = [
-            torch.tensor((0 + i * self.agent_dist, 0)) for i in range(self.n_agents)
-        ]
-        for i, agent in enumerate(agents):
-            agent.controller.reset(env_index)
+        if env_index is None:
+            self.all_time_covered_targets = torch.full(
+                (self.world.batch_dim, self.n_targets),
+                False,
+                device=self.world.device,
+            )
+        else:
+            self.all_time_covered_targets[env_index] = False
 
-            for pos in positions:
-                agent.set_pos(
-                    pos,
-                    batch_index=env_index,
-                )
+        for idx, agent in enumerate(self.world.agents):
+            pos = torch.ones(
+                (self.world.batch_dim, self.world.dim_p), device=self.world.device
+            ) * torch.tensor(self.agents_positions[idx], device=self.world.device)
+            agent.set_pos(
+                pos,
+                batch_index=env_index,
+            )
+
+        for idx, target in enumerate(self._targets):
+            pos = torch.ones(
+                (self.world.batch_dim, self.world.dim_p), device=self.world.device
+            ) * torch.tensor(self.targets_positions[idx], device=self.world.device)
+            target.set_pos(
+                pos,
+                batch_index=env_index,
+            )
 
     def process_action(self, agent: Agent):
 
-        x = (
-            torch.cos(agent.state.rot + 1.5 * torch.pi).squeeze(-1)
-            * -agent.action.u[:, 0]
-        )
-        y = (
-            torch.sin(agent.state.rot + 1.5 * torch.pi).squeeze(-1)
-            * -agent.action.u[:, 0]
-        )
+        # x = (
+        #     torch.cos(agent.state.rot + 1.5 * torch.pi).squeeze(-1)
+        #     * -agent.action.u[:, 0]
+        # )
+        # y = (
+        #     torch.sin(agent.state.rot + 1.5 * torch.pi).squeeze(-1)
+        #     * -agent.action.u[:, 0]
+        # )
 
-        agent.action.u[:, :2] = torch.stack((x, y), dim=-1)
+        # agent.action.u[:, :2] = torch.stack((x, y), dim=-1)
 
         if agent.state.join.any():
             self.world.detach_joint(self.joint_list[0])
 
-    def reward(self, agent: Agent):
+    def calculate_global_reward(
+        self, targets_pos: torch.Tensor, agent: Agent
+    ) -> torch.Tensor:
 
-        return torch.tensor([0])
+        agents_pos = torch.stack([a.state.pos for a in self.world.agents], dim=1)
+
+        agents_targets_dists = torch.cdist(agents_pos, targets_pos)
+        agents_per_target = torch.sum(
+            (agents_targets_dists < self._covering_range).type(torch.int),
+            dim=1,
+        )
+
+        self.covered_targets = agents_per_target >= self._agents_per_target
+
+        # After order has been taken into account continue
+        agents_covering_targets_mask = agents_targets_dists < self._covering_range
+
+        covered_targets_dists = agents_covering_targets_mask * agents_targets_dists
+
+        masked_covered_targets_dists = torch.where(
+            covered_targets_dists == 0, float("inf"), covered_targets_dists
+        )
+
+        min_covered_targets_dists, _ = torch.min(masked_covered_targets_dists, dim=1)
+
+        min_covered_targets_dists = torch.clamp(min_covered_targets_dists, min=1e-2)
+
+        min_covered_targets_dists[torch.isinf(min_covered_targets_dists)] = 0
+
+        global_reward_spread = torch.log10(
+            self.covered_targets / min_covered_targets_dists
+        )
+
+        global_reward_spread *= self.targets_values
+
+        global_reward_spread[torch.isnan(global_reward_spread)] = 0
+        global_reward_spread[torch.isinf(global_reward_spread)] = 0
+
+        return torch.sum(
+            global_reward_spread,
+            dim=1,
+        )
+
+    def reward(self, agent: Agent):
+        is_first = agent == self.world.agents[0]
+        is_last = agent == self.world.agents[-1]
+
+        if is_first:
+
+            targets_pos = torch.stack([t.state.pos for t in self._targets], dim=1)
+
+            # Calculate G
+            self.global_rew = self.calculate_global_reward(targets_pos, agent)
+
+        if is_last:
+            self.all_time_covered_targets += self.covered_targets
+            self.current_order_per_env = torch.sum(
+                self.all_time_covered_targets, dim=1
+            ).unsqueeze(-1)
+
+        covering_rew = torch.cat([self.global_rew])
+
+        return covering_rew
 
     def observation(self, agent: Agent):
 
@@ -206,15 +263,13 @@ class SalpDomain(BaseScenario):
 
         observations.append(agent.state.vel)
 
-        if self.observe_rel_pos:
-            for a in self.world.agents:
-                if a != agent:
-                    observations.append(a.state.pos - agent.state.pos)
+        for a in self.world.agents:
+            if a != agent:
+                observations.append(a.state.pos - agent.state.pos)
 
-        if self.observe_rel_vel:
-            for a in self.world.agents:
-                if a != agent:
-                    observations.append(a.state.vel - agent.state.vel)
+        for a in self.world.agents:
+            if a != agent:
+                observations.append(a.state.vel - agent.state.vel)
 
         return torch.cat(
             observations,
@@ -223,9 +278,23 @@ class SalpDomain(BaseScenario):
 
     def info(self, agent: Agent) -> Dict[str, Tensor]:
         return {
-            "dist_rew": self.dist_rew,
-            "pos_rew": self.pos_rew,
+            "global_reward": (self.global_rew),
         }
+
+    def extra_render(self, env_index: int = 0) -> "List[Geom]":
+        from vmas.simulator import rendering
+
+        geoms: List[Geom] = []
+        # Target ranges
+        for i, target in enumerate(self._targets):
+            range_circle = rendering.make_circle(self._covering_range, filled=False)
+            xform = rendering.Transform()
+            xform.set_translation(*target.state.pos[env_index])
+            range_circle.add_attr(xform)
+            range_circle.set_color(*COLOR_MAP[self.targets_colors[i]].value)
+            geoms.append(range_circle)
+
+        return geoms
 
 
 if __name__ == "__main__":

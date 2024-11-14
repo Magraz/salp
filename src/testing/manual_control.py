@@ -8,20 +8,20 @@ class manual_control:
         self.n_agents = n_agents
         self.cmd_vel = [0, 0]
         self.join = [0]
-        self.speed = 0.25
+        self.speed = 1.0
 
     def on_press(self, key):
 
         try:
             match (key.char):
                 case "w":
-                    self.cmd_vel = [self.speed, 0.0]
-                # case "a":
-                #     self.cmd_vel = [-self.speed, 0.0]
-                # case "d":
-                #     self.cmd_vel = [self.speed, 0.0]
-                case "s":
+                    self.cmd_vel = [0.0, self.speed]
+                case "a":
                     self.cmd_vel = [-self.speed, 0.0]
+                case "d":
+                    self.cmd_vel = [self.speed, 0.0]
+                case "s":
+                    self.cmd_vel = [0.0, -self.speed]
                 case "j":
                     self.join = [0] if self.join[0] else [1]
 

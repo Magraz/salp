@@ -5,7 +5,7 @@ import yaml
 from vmas import make_env
 from vmas.simulator.environment import Environment
 
-from domain.rover_domain import RoverDomain
+from domain.salp_domain import SalpDomain
 
 
 def create_env(batch_dir, n_envs: int, device: str, **kwargs) -> Environment:
@@ -42,7 +42,7 @@ def create_env(batch_dir, n_envs: int, device: str, **kwargs) -> Environment:
 
     # Set up the enviornment
     env = make_env(
-        scenario=RoverDomain(),
+        scenario=SalpDomain(),
         num_envs=n_envs,
         device=device,
         seed=None,
@@ -62,7 +62,7 @@ def create_env(batch_dir, n_envs: int, device: str, **kwargs) -> Environment:
         targets_types=poi_types,
         targets_orders=poi_orders,
         use_order=use_order,
-        viewer_zoom=kwargs.pop("viewer_zoom", 1),
+        viewer_zoom=kwargs.pop("viewer_zoom", 1.8),
     )
 
     return env

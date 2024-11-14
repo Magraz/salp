@@ -50,8 +50,6 @@ class RoverDomain(BaseScenario):
         self.targets_respawn = kwargs.pop("targets_respawn", False)
         self.random_spawn = kwargs.pop("random_spawn", False)
 
-        self.covering_rew_coeff = kwargs.pop("covering_rew_coeff", 1.0)
-
         ScenarioUtils.check_kwargs_consumed(kwargs)
 
         self.agent_radius = 0.05
