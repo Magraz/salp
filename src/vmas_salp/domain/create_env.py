@@ -5,12 +5,20 @@ import yaml
 from vmas import make_env
 from vmas.simulator.environment import Environment
 
-from domain.salp_domain import SalpDomain
+from vmas_salp.domain.salp_domain import SalpDomain
+from torchrl.envs.libs.vmas import VmasEnv
 
 
-def create_env(batch_dir, n_envs: int, device: str, **kwargs) -> Environment:
+def create_env(
+    batch_dir, n_envs: int, device: str, benchmark: bool, **kwargs
+) -> Environment:
 
-    env_file = os.path.join(batch_dir, "_env.yaml")
+    env_filename = "_env.yaml"
+
+    if benchmark:
+        env_filename = "task_1.yaml"
+
+    env_file = os.path.join(batch_dir, env_filename)
 
     with open(str(env_file), "r") as file:
         env_config = yaml.safe_load(file)
@@ -40,29 +48,54 @@ def create_env(batch_dir, n_envs: int, device: str, **kwargs) -> Environment:
     obs_radius = [poi["observation_radius"] for poi in env_config["pois"]]
     use_order = env_config["use_order"]
 
-    # Set up the enviornment
-    env = make_env(
-        scenario=SalpDomain(),
-        num_envs=n_envs,
-        device=device,
-        seed=None,
-        # Environment specific variables
-        n_agents=n_agents,
-        n_targets=n_pois,
-        agents_positions=agents_positions,
-        agents_colors=agents_colors,
-        targets_positions=poi_positions,
-        targets_values=poi_values,
-        targets_colors=poi_colors,
-        x_semidim=map_size[0],
-        y_semidim=map_size[1],
-        agents_per_target=coupling[0],
-        covering_range=obs_radius[0],
-        lidar_range=lidar_range[0],
-        targets_types=poi_types,
-        targets_orders=poi_orders,
-        use_order=use_order,
-        viewer_zoom=kwargs.pop("viewer_zoom", 1.8),
-    )
+    if benchmark:
+        # Set up the enviornment
+        env = VmasEnv(
+            scenario=SalpDomain(),
+            num_envs=n_envs,
+            device=device,
+            seed=None,
+            # Environment specific variables
+            n_agents=n_agents,
+            n_targets=n_pois,
+            agents_positions=agents_positions,
+            agents_colors=agents_colors,
+            targets_positions=poi_positions,
+            targets_values=poi_values,
+            targets_colors=poi_colors,
+            x_semidim=map_size[0],
+            y_semidim=map_size[1],
+            agents_per_target=coupling[0],
+            covering_range=obs_radius[0],
+            lidar_range=lidar_range[0],
+            targets_types=poi_types,
+            targets_orders=poi_orders,
+            use_order=use_order,
+            viewer_zoom=kwargs.pop("viewer_zoom", 1.8),
+        )
+    else:
+        env = make_env(
+            scenario=SalpDomain(),
+            num_envs=n_envs,
+            device=device,
+            seed=None,
+            # Environment specific variables
+            n_agents=n_agents,
+            n_targets=n_pois,
+            agents_positions=agents_positions,
+            agents_colors=agents_colors,
+            targets_positions=poi_positions,
+            targets_values=poi_values,
+            targets_colors=poi_colors,
+            x_semidim=map_size[0],
+            y_semidim=map_size[1],
+            agents_per_target=coupling[0],
+            covering_range=obs_radius[0],
+            lidar_range=lidar_range[0],
+            targets_types=poi_types,
+            targets_orders=poi_orders,
+            use_order=use_order,
+            viewer_zoom=kwargs.pop("viewer_zoom", 1.8),
+        )
 
     return env

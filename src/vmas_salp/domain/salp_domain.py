@@ -13,10 +13,10 @@ from vmas.simulator.core import Agent, Landmark, Box, Sphere
 from vmas.simulator.scenario import BaseScenario
 from vmas.simulator.utils import ScenarioUtils
 
-from domain.custom_world import SalpWorld
-from domain.dynamics import SalpDynamics
-from domain.controller import SalpController
-from domain.utils import COLOR_MAP
+from vmas_salp.domain.custom_world import SalpWorld
+from vmas_salp.domain.dynamics import SalpDynamics
+from vmas_salp.domain.controller import SalpController
+from vmas_salp.domain.utils import COLOR_MAP
 
 if typing.TYPE_CHECKING:
     from vmas.simulator.rendering import Geom
