@@ -9,13 +9,11 @@ import torch
 
 from vmas import make_env
 from vmas.simulator.utils import save_video
-from vmas.simulator.scenario import BaseScenario
 from vmas.simulator.environment import Environment
 
-from domain.rover_domain import HeuristicPolicy
+from vmas_salp.domain.create_env import create_env
 from pynput.keyboard import Listener
-from domain.create_env import create_env
-from testing.manual_control import manual_control
+from vmas_salp.testing.manual_control import manual_control
 from pathlib import Path
 
 
@@ -73,15 +71,14 @@ def use_vmas_env(
             for i, agent in enumerate(env.agents):
 
                 if i == mc.controlled_agent:
-                    cmd_action = mc.cmd_vel[:] + mc.join[:]
+                    cmd_action = mc.cmd_vel[:]  # + mc.join[:]
                     action = torch.tensor(cmd_action).repeat(n_envs, 1)
                 else:
-                    action = torch.tensor([0.0, 0.0, 0.0]).repeat(n_envs, 1)
+                    action = torch.tensor([0.0, 0.0]).repeat(n_envs, 1)
 
                 actions.append(action)
 
             obs, rews, dones, info = env.step(actions)
-            temp = [g[:n_envs] for g in rews]
 
             obs_list.append(obs[0][0])
 
@@ -180,12 +177,14 @@ if __name__ == "__main__":
 
     use_vmas_env(
         name=f"{args["batch"]}_{n_agents}a",
-        env=create_env(batch_dir=batch_dir, n_envs=n_envs, device=device),
+        env=create_env(
+            batch_dir=batch_dir, n_envs=n_envs, device=device, benchmark=False
+        ),
         render=True,
         save_render=False,
         device=device,
         n_envs=n_envs,
-        n_steps=10000,
+        n_steps=100,
         # kwargs
         n_agents=n_agents,
         targets_positions=poi_positions,

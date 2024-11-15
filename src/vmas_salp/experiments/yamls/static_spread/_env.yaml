@@ -1,8 +1,8 @@
 
 map_size: [2.0, 4.0]
 use_order: False
-obs_space_dim: 8
-action_space_dim: 1
+obs_space_dim: 4
+action_space_dim: 2
 
 rovers:
   - observation_radius: 1

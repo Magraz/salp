@@ -90,8 +90,6 @@ def create_env(
             agents_per_target=coupling[0],
             covering_range=obs_radius[0],
             lidar_range=lidar_range[0],
-            targets_types=poi_types,
-            targets_orders=poi_orders,
             use_order=use_order,
             viewer_zoom=kwargs.pop("viewer_zoom", 1.8),
         )

@@ -71,7 +71,6 @@ class CooperativeCoevolutionaryAlgorithm:
     ):
         policy_config = PolicyConfig(**policy_config)
         ccea_config = CCEAConfig(**ccea_config)
-        fc_config = FitnessCriticConfig(**fc_config)
 
         self.batch_dir = batch_dir
         self.trials_dir = trials_dir
@@ -93,6 +92,8 @@ class CooperativeCoevolutionaryAlgorithm:
         # Flags
         self.use_teaming = kwargs.pop("use_teaming", False)
         self.use_fc = kwargs.pop("use_fc", False)
+        if self.use_fc:
+            fc_config = FitnessCriticConfig(**fc_config)
 
         # Policy
         self.output_multiplier = policy_config.output_multiplier
@@ -335,20 +336,16 @@ class CooperativeCoevolutionaryAlgorithm:
 
             case FitnessCalculationEnum.AGG:
                 g_per_env = torch.sum(torch.stack(G_list), dim=0).tolist()
-                d_per_env = torch.transpose(
-                    torch.sum(torch.stack(D_list), dim=0), dim0=0, dim1=1
-                ).tolist()
 
             case FitnessCalculationEnum.LAST:
                 g_per_env = G_list[-1].tolist()
-                d_per_env = torch.transpose(D_list[-1], dim0=0, dim1=1).tolist()
 
         # Generate evaluation infos
         eval_infos = [
             EvalInfo(
                 team=team,
                 team_fitness=g_per_env[i],
-                agent_fitnesses=d_per_env[i],
+                agent_fitnesses=g_per_env[i],
                 joint_traj=JointTrajectory(
                     joint_state_traj=joint_states_per_env[i].reshape(
                         self.n_agents, self.n_steps + 1, self.action_size
@@ -634,14 +631,16 @@ class CooperativeCoevolutionaryAlgorithm:
                 fitness_critics = self.init_fitness_critics()
 
         # Create environment for hof team
-        env = create_env(self.batch_dir, n_envs=1, device=self.device)
+        env = create_env(self.batch_dir, n_envs=1, device=self.device, benchmark=False)
 
         hof_team = self.formTeams(pop, joint_policies=1)
 
         hof_eval_info = self.evaluateTeams(env, hof_team)[0]
 
         # Create environment
-        env = create_env(self.batch_dir, n_envs=self.subpop_size, device=self.device)
+        env = create_env(
+            self.batch_dir, n_envs=self.subpop_size, device=self.device, benchmark=False
+        )
 
         for n_gen in range(self.n_gens + 1):
 

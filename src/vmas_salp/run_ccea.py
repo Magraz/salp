@@ -1,5 +1,4 @@
 from learning.ccea.run import runCCEA
-import os
 
 import argparse
 from pathlib import Path
