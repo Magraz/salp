@@ -36,6 +36,7 @@ class ExperimentConfig:
     policy_config: PolicyConfig = None
     fc_config: FitnessCriticConfig = None
     n_gens_between_save: int = 0
+    team_size: int = 0
 
 
 @dataclass
@@ -66,6 +67,7 @@ class POIConfig:
 class EnvironmentConfig:
     map_size: tuple[int]
     use_order: bool
+    shuffle_agents_positions: bool
     rovers: list[RoversConfig]
     pois: list[POIConfig]
     obs_space_dim: int

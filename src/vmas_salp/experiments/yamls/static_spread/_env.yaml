@@ -1,35 +1,73 @@
 
-map_size: [2.0, 4.0]
+map_size: [2.0, 2.0]
 use_order: False
 obs_space_dim: 4
 action_space_dim: 2
+shuffle_agents_positions: true
 
 rovers:
   - observation_radius: 1
-    type: 0
     position:
       spawn_rule: fixed
-      coordinates: [-0.1, -1.0]
+      coordinates: [-0.2, 0.0]
   
   - observation_radius: 1
-    type: 0
     position:
       spawn_rule: fixed
-      coordinates: [0.0, -1.0]
+      coordinates: [-0.1, 0.0]
   
   - observation_radius: 1
-    type: 0
     position:
       spawn_rule: fixed
-      coordinates: [0.1, -1.0]
+      coordinates: [0.0, 0.0]
+  
+  - observation_radius: 1
+    position:
+      spawn_rule: fixed
+      coordinates: [0.1, 0.0]
+  
+  - observation_radius: 1
+    position:
+      spawn_rule: fixed
+      coordinates: [0.2, 0.0]
 
 pois:
   - value: 1.0
-    coupling: 2
-    observation_radius: 6
+    coupling: 3
+    observation_radius: 0.25
     color: "GREEN"
     type: 0
     order: 0
     position:
       spawn_rule: fixed
-      coordinates: [0.0, 3.0]
+      coordinates: [0.25, 0.5]
+  
+  - value: 1.0
+    coupling: 3
+    observation_radius: 0.25
+    color: "GREEN"
+    type: 0
+    order: 0
+    position:
+      spawn_rule: fixed
+      coordinates: [-0.25, -0.5]
+  
+  - value: 1.0
+    coupling: 3
+    observation_radius: 0.25
+    color: "GREEN"
+    type: 0
+    order: 0
+    position:
+      spawn_rule: fixed
+      coordinates: [0.5, -0.25]
+
+  - value: 1.0
+    coupling: 3
+    observation_radius: 0.25
+    color: "GREEN"
+    type: 0
+    order: 0
+    position:
+      spawn_rule: fixed
+      coordinates: [-0.5, 0.25]

@@ -17,6 +17,7 @@ from vmas_salp.domain.custom_world import SalpWorld
 from vmas_salp.domain.dynamics import SalpDynamics
 from vmas_salp.domain.controller import SalpController
 from vmas_salp.domain.utils import COLOR_MAP
+import random
 
 if typing.TYPE_CHECKING:
     from vmas.simulator.rendering import Geom
@@ -39,6 +40,8 @@ class SalpDomain(BaseScenario):
             kwargs.pop("targets_values", []), device=device
         )
         self.agents_positions = kwargs.pop("agents_positions", [])
+        if kwargs.pop("shuffle_agents_positions", False):
+            random.shuffle(self.agents_positions)
 
         self._min_dist_between_entities = kwargs.pop("min_dist_between_entities", 0.2)
         self._lidar_range = kwargs.pop("lidar_range", 0.35)
@@ -59,10 +62,8 @@ class SalpDomain(BaseScenario):
         self.covered_targets = torch.zeros((batch_dim, self.n_targets), device=device)
 
         # CONSTANTS
-        self.agent_dist = 0.2
-        self.v_range = kwargs.pop("v_range", 1.0)
-        self.f_range = kwargs.pop("f_range", 1)
-        self.u_range = self.f_range
+        self.agent_dist = 0.1
+        self.u_range = 1.0
 
         # Make world
         world = SalpWorld(
@@ -159,6 +160,7 @@ class SalpDomain(BaseScenario):
 
     def process_action(self, agent: Agent):
 
+        # Single DOF movement
         # x = (
         #     torch.cos(agent.state.rot + 1.5 * torch.pi).squeeze(-1)
         #     * -agent.action.u[:, 0]

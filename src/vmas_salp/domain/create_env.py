@@ -10,7 +10,7 @@ from torchrl.envs.libs.vmas import VmasEnv
 
 
 def create_env(
-    batch_dir, n_envs: int, device: str, benchmark: bool, **kwargs
+    batch_dir, n_envs: int, device: str, team_size: int, benchmark: bool, **kwargs
 ) -> Environment:
 
     env_filename = "_env.yaml"
@@ -27,13 +27,14 @@ def create_env(
     map_size = env_config["map_size"]
 
     # Agent data
-    n_agents = len(env_config["rovers"])
+    n_agents = team_size
     agents_colors = [
         agent["color"] if agent.get("color") else "BLUE"
         for agent in env_config["rovers"]
     ]
     agents_positions = [poi["position"]["coordinates"] for poi in env_config["rovers"]]
     lidar_range = [rover["observation_radius"] for rover in env_config["rovers"]]
+    shuffle_agents_positions = env_config["shuffle_agents_positions"]
 
     # POIs data
     n_pois = len(env_config["pois"])
@@ -70,6 +71,7 @@ def create_env(
             lidar_range=lidar_range[0],
             use_order=use_order,
             viewer_zoom=kwargs.pop("viewer_zoom", 1.8),
+            shuffle_agents_positions=shuffle_agents_positions,
         )
     else:
         env = make_env(
@@ -92,6 +94,7 @@ def create_env(
             lidar_range=lidar_range[0],
             use_order=use_order,
             viewer_zoom=kwargs.pop("viewer_zoom", 1.8),
+            shuffle_agents_positions=shuffle_agents_positions,
         )
 
     return env
