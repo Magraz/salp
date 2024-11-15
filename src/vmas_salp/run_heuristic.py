@@ -184,7 +184,7 @@ if __name__ == "__main__":
         save_render=False,
         device=device,
         n_envs=n_envs,
-        n_steps=100,
+        n_steps=1000,
         # kwargs
         n_agents=n_agents,
         targets_positions=poi_positions,

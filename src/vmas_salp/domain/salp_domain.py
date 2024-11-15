@@ -112,8 +112,8 @@ class SalpDomain(BaseScenario):
                 anchor_a=(0, 0),
                 anchor_b=(0, 0),
                 dist=self.agent_dist,
-                rotate_a=False,
-                rotate_b=False,
+                rotate_a=True,
+                rotate_b=True,
                 collidable=True,
                 width=0,
             )
