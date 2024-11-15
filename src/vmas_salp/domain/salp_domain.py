@@ -263,13 +263,13 @@ class SalpDomain(BaseScenario):
 
         observations.append(agent.state.vel)
 
-        for a in self.world.agents:
-            if a != agent:
-                observations.append(a.state.pos - agent.state.pos)
+        # for a in self.world.agents:
+        #     if a != agent:
+        #         observations.append(a.state.pos - agent.state.pos)
 
-        for a in self.world.agents:
-            if a != agent:
-                observations.append(a.state.vel - agent.state.vel)
+        # for a in self.world.agents:
+        #     if a != agent:
+        #         observations.append(a.state.vel - agent.state.vel)
 
         return torch.cat(
             observations,
