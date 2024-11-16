@@ -55,7 +55,7 @@ class SalpDomain(BaseScenario):
         ScenarioUtils.check_kwargs_consumed(kwargs)
 
         self.agent_radius = 0.05
-        self.target_radius = self.agent_radius
+        self.target_radius = 0.09
 
         self.device = device
 
@@ -81,7 +81,7 @@ class SalpDomain(BaseScenario):
 
             target = Landmark(
                 name=f"target_{i}",
-                collide=False,
+                collide=True,
                 shape=Sphere(radius=self.target_radius),
                 color=COLOR_MAP[self.targets_colors[i]],
             )
