@@ -16,6 +16,7 @@ from vmas.simulator.utils import ScenarioUtils
 from vmas_salp.domain.custom_world import SalpWorld
 from vmas_salp.domain.dynamics import SalpDynamics
 from vmas_salp.domain.controller import SalpController
+from vmas_salp.domain.custom_sensors import SectorDensity
 from vmas_salp.domain.utils import COLOR_MAP
 import random
 
@@ -98,6 +99,7 @@ class SalpDomain(BaseScenario):
                 render_action=True,
                 shape=Sphere(radius=0.05),
                 dynamics=SalpDynamics(),
+                sensors=([SectorDensity(world, max_range=self._lidar_range)]),
                 collide=True,
             )
 
@@ -264,6 +266,9 @@ class SalpDomain(BaseScenario):
         observations.append(agent.state.pos)
 
         observations.append(agent.state.vel)
+
+        poi_sensors = agent.sensors[0].measure()[:, 4:]
+        observations.append(poi_sensors)
 
         # for a in self.world.agents:
         #     if a != agent:

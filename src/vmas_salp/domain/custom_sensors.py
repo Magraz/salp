@@ -43,6 +43,8 @@ class SectorDensity(Sensor):
 
         self.target_values = torch.empty((0)).to(self._world.device)
         for l in self._world._landmarks:
+            if l.is_joint:
+                continue
             self.target_values = torch.cat(
                 (self.target_values, l.value.unsqueeze(0)), dim=-1
             )
@@ -90,6 +92,8 @@ class SectorDensity(Sensor):
             )
 
         for l in self._world._landmarks:
+            if l.is_joint:
+                continue
             dists_2_targets = torch.cat(
                 (
                     dists_2_targets,
