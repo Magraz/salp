@@ -22,6 +22,9 @@ vmas_salp/learning/ccea/ccea.py
 vmas_salp/learning/ccea/run.py
 vmas_salp/learning/ccea/selection.py
 vmas_salp/learning/ccea/types.py
+vmas_salp/learning/ccea/policies/cnn.py
+vmas_salp/learning/ccea/policies/gru.py
+vmas_salp/learning/ccea/policies/mlp.py
 vmas_salp/policies/cnn.py
 vmas_salp/policies/gru.py
 vmas_salp/policies/mlp.py

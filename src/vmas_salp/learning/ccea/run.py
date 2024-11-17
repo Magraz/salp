@@ -3,7 +3,7 @@ import yaml
 import torch
 from pathlib import Path
 from vmas_salp.learning.ccea.ccea import CooperativeCoevolutionaryAlgorithm
-from vmas_salp.learning.dataclasses import ExperimentConfig, EnvironmentConfig
+from vmas_salp.learning.utils import ExperimentConfig, EnvironmentConfig
 from dataclasses import asdict
 
 

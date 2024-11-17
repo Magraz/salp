@@ -8,7 +8,7 @@ import yaml
 sys.path.insert(0, "./src")
 
 from vmas_salp.learning.ccea.ccea import CooperativeCoevolutionaryAlgorithm
-from vmas_salp.learning.dataclasses import ExperimentConfig, EnvironmentConfig
+from vmas_salp.learning.utils import ExperimentConfig, EnvironmentConfig
 from vmas_salp.domain.create_env import create_env
 from dataclasses import asdict
 

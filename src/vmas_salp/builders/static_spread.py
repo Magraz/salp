@@ -1,11 +1,11 @@
 from pathlib import Path
 
-from vmas_salp.learning.dataclasses import (
+from vmas_salp.learning.utils import (
     ExperimentConfig,
     PolicyConfig,
     CCEAConfig,
 )
-from vmas_salp.learning.ccea.types import (
+from vmas_salp.learning.ccea.utils import (
     FitnessShapingEnum,
     FitnessCalculationEnum,
     SelectionEnum,
