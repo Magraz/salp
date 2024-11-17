@@ -48,8 +48,8 @@ ccea = CooperativeCoevolutionaryAlgorithm(
     map_size=env_config.map_size,
     observation_size=env_config.obs_space_dim,
     action_size=env_config.action_space_dim,
-    n_agents=len(env_config.rovers),
-    n_pois=len(env_config.pois),
+    n_agents=len(env_config.agents),
+    n_pois=len(env_config.targets),
     # Experiment Data
     **asdict(exp_config),
 )
@@ -57,11 +57,11 @@ ccea = CooperativeCoevolutionaryAlgorithm(
 eval_infos = ccea.evaluateTeams(
     create_env(
         batch_dir=batch_dir,
-        n_envs=1,
         device=ccea.device,
-        viewer_zoom=1.5,
+        n_envs=1,
+        n_agents=4,
+        viewer_zoom=1.2,
         benchmark=False,
-        team_size=4,
     ),
     [best_team],
     render=True,

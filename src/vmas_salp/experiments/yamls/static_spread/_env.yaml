@@ -7,26 +7,31 @@ shuffle_agents_positions: true
 
 agents:
   - observation_radius: 1
+    color: "GREEN"
     position:
       spawn_rule: fixed
       coordinates: [-0.2, 0.0]
   
   - observation_radius: 1
+    color: "BLACK"
     position:
       spawn_rule: fixed
       coordinates: [-0.1, 0.0]
   
   - observation_radius: 1
+    color: "BLUE"
     position:
       spawn_rule: fixed
       coordinates: [0.0, 0.0]
   
   - observation_radius: 1
+    color: "WHITE"
     position:
       spawn_rule: fixed
       coordinates: [0.1, 0.0]
   
   - observation_radius: 1
+    color: "GRAY"
     position:
       spawn_rule: fixed
       coordinates: [0.2, 0.0]
@@ -40,7 +45,7 @@ targets:
     order: 0
     position:
       spawn_rule: fixed
-      coordinates: [-0.25, 1.5]
+      coordinates: [-0.25, 1.0]
   
   - value: 1.0
     coupling: 3
@@ -50,7 +55,7 @@ targets:
     order: 0
     position:
       spawn_rule: fixed
-      coordinates: [0.25, -1.5]
+      coordinates: [0.25, -1.0]
   
   - value: 1.0
     coupling: 3
@@ -60,7 +65,7 @@ targets:
     order: 0
     position:
       spawn_rule: fixed
-      coordinates: [1.5, 0.25]
+      coordinates: [1.0, 0.25]
 
   - value: 1.0
     coupling: 3
@@ -70,4 +75,4 @@ targets:
     order: 0
     position:
       spawn_rule: fixed
-      coordinates: [-1.5, -0.25]
+      coordinates: [-1.0, -0.25]
