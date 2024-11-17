@@ -40,8 +40,6 @@ def create_env(
     n_pois = len(env_config["pois"])
     poi_positions = [poi["position"]["coordinates"] for poi in env_config["pois"]]
     poi_values = [poi["value"] for poi in env_config["pois"]]
-    poi_types = [poi["type"] for poi in env_config["pois"]]
-    poi_orders = [poi["order"] for poi in env_config["pois"]]
     poi_colors = [
         poi["color"] if poi.get("color") else "GREEN" for poi in env_config["pois"]
     ]

@@ -19,7 +19,7 @@ from vmas_salp.learning.ccea.selection import (
     softmaxSelection,
 )
 from vmas_salp.learning.ccea.types import JointTrajectory, Team, EvalInfo
-from vmas_salp.learning.ccea.dataclasses import (
+from vmas_salp.learning.dataclasses import (
     CCEAConfig,
     PolicyConfig,
 )

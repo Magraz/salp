@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from vmas_salp.learning.ccea.dataclasses import (
+from vmas_salp.learning.dataclasses import (
     ExperimentConfig,
     PolicyConfig,
     CCEAConfig,
