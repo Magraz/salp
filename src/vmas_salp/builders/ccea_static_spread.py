@@ -1,11 +1,11 @@
 from pathlib import Path
 
-from vmas_salp.learning.utils import (
+from vmas_salp.learning.dataclasses import (
     ExperimentConfig,
     PolicyConfig,
     CCEAConfig,
 )
-from vmas_salp.learning.ccea.utils import (
+from vmas_salp.learning.ccea.types import (
     FitnessShapingEnum,
     FitnessCalculationEnum,
     SelectionEnum,
@@ -15,7 +15,7 @@ from vmas_salp.learning.ccea.utils import (
 from copy import deepcopy
 from dataclasses import asdict
 
-BATCH = Path(__file__).stem
+BATCH = "static_spread"
 
 # DEFAULTS
 N_STEPS = 80

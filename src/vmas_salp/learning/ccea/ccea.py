@@ -18,7 +18,7 @@ from vmas_salp.learning.ccea.selection import (
     epsilonGreedySelection,
     softmaxSelection,
 )
-from vmas_salp.learning.ccea.utils import (
+from vmas_salp.learning.ccea.types import (
     EvalInfo,
     PolicyEnum,
     SelectionEnum,
@@ -26,18 +26,20 @@ from vmas_salp.learning.ccea.utils import (
     InitializationEnum,
     FitnessCalculationEnum,
 )
-from vmas_salp.learning.utils import (
-    Team,
-    JointTrajectory,
+from vmas_salp.learning.dataclasses import (
     CCEAConfig,
     PolicyConfig,
+)
+
+from vmas_salp.learning.types import (
+    Team,
+    JointTrajectory,
 )
 
 from copy import deepcopy
 import numpy as np
 import os
 from pathlib import Path
-import yaml
 import logging
 import pickle
 import csv

@@ -1,5 +1,5 @@
 from enum import StrEnum
-from vmas_salp.learning.utils import Team
+from vmas_salp.learning.types import Team
 
 
 class EvalInfo:

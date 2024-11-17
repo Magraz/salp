@@ -10,10 +10,6 @@ from vmas.simulator.utils import save_video
 
 from vmas_salp.domain.create_env import create_env
 
-from vmas_salp.learning.utils import (
-    CCEAConfig,
-    PolicyConfig,
-)
 
 from copy import deepcopy
 import numpy as np
@@ -25,6 +21,10 @@ import pickle
 import csv
 
 from itertools import combinations
+
+from vmas_salp.learning.types import (
+    Team,
+)
 
 # Create and configure logger
 logging.basicConfig(format="%(asctime)s %(message)s")
@@ -67,7 +67,6 @@ class PPO:
 
         # Flags
         self.use_teaming = kwargs.pop("use_teaming", False)
-        self.use_fc = kwargs.pop("use_fc", False)
 
         self.team_size = (
             kwargs.pop("team_size", 0) if self.use_teaming else self.n_agents
@@ -75,6 +74,24 @@ class PPO:
         self.team_combinations = [
             combo for combo in combinations(range(self.n_agents), self.team_size)
         ]
+
+        # PPO Args
+        self.episodes = 1000
+        self.anneal_lr = True
+        self.gamma = 0.99
+        self.gae_lambda = 0.95
+        self.num_minibatches = 32
+        self.update_epochs = 10
+        self.norm_adv = True
+        self.clip_coef = 0.2
+        self.clip_vloss = True
+        self.ent_coef = 0.0
+        self.vf_coef = 0.5
+        self.max_grad_norm = 0.5
+        self.target_kl = None
+        self.batch_size = 0
+        self.minibatch_size = 0
+        self.num_iterations = 0
 
     def formTeams(self, population, joint_policies: int) -> list[Team]:
         # Start a list of teams

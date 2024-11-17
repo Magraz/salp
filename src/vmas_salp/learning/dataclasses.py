@@ -1,23 +1,6 @@
 from dataclasses import dataclass
 
-
-@dataclass
-class CCEAConfig:
-    n_gens: int
-    n_steps: int
-    subpopulation_size: int
-    selection: str
-    fitness_shaping: str
-    fitness_calculation: str
-    mutation: dict
-
-
-@dataclass
-class FitnessCriticConfig:
-    epochs: int
-    type: str
-    loss_type: str
-    hidden_layers: tuple[int]
+from vmas_salp.learning.ccea.dataclasses import CCEAConfig, FitnessCriticConfig
 
 
 @dataclass
@@ -72,21 +55,3 @@ class EnvironmentConfig:
     pois: list[POIConfig]
     obs_space_dim: int
     action_space_dim: int
-
-
-class Team:
-    def __init__(
-        self,
-        idx: int,
-        individuals: list = None,
-        combination: list = None,
-    ):
-        self.idx = idx
-        self.individuals = individuals if individuals is not None else []
-        self.combination = combination if combination is not None else []
-
-
-class JointTrajectory:
-    def __init__(self, joint_state_traj: list, joint_obs_traj: list):
-        self.states = joint_state_traj
-        self.observations = joint_obs_traj
