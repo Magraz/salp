@@ -51,7 +51,7 @@ class EnvironmentConfig:
     map_size: tuple[int]
     use_order: bool
     shuffle_agents_positions: bool
-    rovers: list[RoversConfig]
-    pois: list[POIConfig]
+    agents: list[RoversConfig]
+    targets: list[POIConfig]
     obs_space_dim: int
     action_space_dim: int

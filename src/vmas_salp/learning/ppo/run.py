@@ -2,12 +2,12 @@ import os
 import yaml
 import torch
 from pathlib import Path
-from vmas_salp.learning.ccea.ccea import CooperativeCoevolutionaryAlgorithm
+from vmas_salp.learning.ppo.ppo import PPO
 from vmas_salp.learning.dataclasses import ExperimentConfig, EnvironmentConfig
 from dataclasses import asdict
 
 
-def runCCEA(batch_dir: str, batch_name: str, experiment_name: str, trial_id: int):
+def runPPO(batch_dir: str, batch_name: str, experiment_name: str, trial_id: int):
 
     exp_file = os.path.join(batch_dir, f"{experiment_name}.yaml")
 
@@ -22,7 +22,7 @@ def runCCEA(batch_dir: str, batch_name: str, experiment_name: str, trial_id: int
     env_config = EnvironmentConfig(**env_dict)
     exp_config = ExperimentConfig(**exp_dict)
 
-    ccea = CooperativeCoevolutionaryAlgorithm(
+    ppo = PPO(
         batch_dir=batch_dir,
         trials_dir=Path(batch_dir).parents[1]
         / "results"
@@ -41,4 +41,4 @@ def runCCEA(batch_dir: str, batch_name: str, experiment_name: str, trial_id: int
         # Experiment Data
         **asdict(exp_config),
     )
-    return ccea.run()
+    return ppo.run()

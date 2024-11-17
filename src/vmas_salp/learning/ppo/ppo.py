@@ -9,16 +9,16 @@ from vmas.simulator.environment import Environment
 from vmas.simulator.utils import save_video
 
 from vmas_salp.domain.create_env import create_env
+from vmas_salp.learning.ppo.policy import Agent
 
-
-from copy import deepcopy
 import numpy as np
+
 import os
 from pathlib import Path
-import yaml
 import logging
 import pickle
 import csv
+import time
 
 from itertools import combinations
 
@@ -62,9 +62,6 @@ class PPO:
         self.n_agents = kwargs.pop("n_agents", 0)
         self.n_pois = kwargs.pop("n_pois", 0)
 
-        # Experiment Data
-        self.n_gens_between_save = kwargs.pop("n_gens_between_save", 0)
-
         # Flags
         self.use_teaming = kwargs.pop("use_teaming", False)
 
@@ -76,6 +73,12 @@ class PPO:
         ]
 
         # PPO Args
+        self.seed = 1
+        self.torch_deterministic = True
+        self.total_timesteps = 1000000
+        self.learning_rate = 3e-4
+        self.num_envs = 1
+        self.num_steps = 2048
         self.episodes = 1000
         self.anneal_lr = True
         self.gamma = 0.99
@@ -89,6 +92,7 @@ class PPO:
         self.vf_coef = 0.5
         self.max_grad_norm = 0.5
         self.target_kl = None
+
         self.batch_size = 0
         self.minibatch_size = 0
         self.num_iterations = 0
@@ -116,125 +120,117 @@ class PPO:
 
         return teams
 
-    def evaluateTeams(
-        self,
-        env: Environment,
-        teams: list[Team],
-        render: bool = False,
-        save_render: bool = False,
-    ):
-        # Set up models
-        joint_policies = [
-            [self.generateTemplateNN() for _ in range(self.team_size)] for _ in teams
-        ]
-
-        # Load in the weights
-        for i, team in enumerate(teams):
-            for agent_nn, individual in zip(joint_policies[i], team.individuals):
-                agent_nn.set_params(torch.from_numpy(individual).to(self.device))
-
-        # Get initial observations per agent
-        observations = env.reset()
-
-        G_list = []
-        frame_list = []
-
-        # Start evaluation
-        for step in range(self.n_steps):
-
-            stacked_obs = torch.stack(observations, -1)
-
-            actions = [
-                torch.empty((0, self.action_size)).to(self.device)
-                for _ in range(self.team_size)
-            ]
-
-            for observation, joint_policy in zip(stacked_obs, joint_policies):
-
-                for i, policy in enumerate(joint_policy):
-                    policy_output = policy.forward(observation[:, i])
-                    actions[i] = torch.cat(
-                        (
-                            actions[i],
-                            policy_output * self.output_multiplier,
-                        ),
-                        dim=0,
-                    )
-
-            observations, rewards, _, _ = env.step(actions)
-
-            G_list.append(torch.stack([g[: len(teams)] for g in rewards], dim=0)[0])
-
-            # Visualization
-            if render:
-                frame = env.render(
-                    mode="rgb_array",
-                    agent_index_focus=None,  # Can give the camera an agent index to focus on
-                    visualize_when_rgb=True,
-                )
-                if save_render:
-                    frame_list.append(frame)
-
-        # Save video
-        if render and save_render:
-            save_video(self.video_name, frame_list, fps=1 / env.scenario.world.dt)
-
-        return
-
-    def load_checkpoint(
-        self,
-        checkpoint_name: str,
-        fitness_dir: str,
-        trial_dir: str,
-    ):
-        # Load checkpoint file
-        with open(checkpoint_name, "rb") as handle:
-            checkpoint = pickle.load(handle)
-            pop = checkpoint["population"]
-            checkpoint_gen = checkpoint["gen"]
-
-        # Set fitness csv file to checkpoint
-        new_fit_path = os.path.join(trial_dir, "fitness_edit.csv")
-        with open(fitness_dir, "r") as inp, open(new_fit_path, "w") as out:
-            writer = csv.writer(out)
-            for row in csv.reader(inp):
-                if row[0].isdigit():
-                    gen = int(row[0])
-                    if gen <= checkpoint_gen:
-                        writer.writerow(row)
-                else:
-                    writer.writerow(row)
-
-        # Remove old fitness file
-        os.remove(fitness_dir)
-        # Rename new fitness file
-        os.rename(new_fit_path, fitness_dir)
-
-        return pop, checkpoint_gen
-
     def run(self):
-
-        # Set trial directory name
-        trial_folder_name = "_".join(("trial", str(self.trial_id)))
-        trial_dir = os.path.join(self.trials_dir, trial_folder_name)
-        fitness_dir = f"{trial_dir}/fitness.csv"
-        checkpoint_name = os.path.join(trial_dir, "checkpoint.pickle")
-
-        # Create directory for saving data
-        if not os.path.isdir(trial_dir):
-            os.makedirs(trial_dir)
-
-        checkpoint_exists = Path(checkpoint_name).is_file()
-        pop = None
-
-        # Load checkpoint
-        checkpoint_gen = 0
+        # TRY NOT TO MODIFY: seeding
+        random.seed(self.seed)
+        np.random.seed(self.seed)
+        torch.manual_seed(self.seed)
+        torch.backends.cudnn.deterministic = self.torch_deterministic
 
         # Create environment
         env = create_env(
             self.batch_dir,
-            n_envs=10,
             device=self.device,
-            team_size=self.team_size,
-            benchmark=False,
+            n_envs=self.num_envs,
+            n_agents=self.team_size,
         )
+
+        joint_policies = [
+            [
+                Agent(self.observation_size, self.action_size, lr=self.learning_rate)
+                for _ in self.team_size
+            ]
+        ]
+
+        # ALGO Logic: Storage setup
+        obs = []
+        actions = []
+        logprobs = []
+        rewards = []
+        dones = []
+        values = []
+
+        # TRY NOT TO MODIFY: start the game
+        global_step = 0
+        start_time = time.time()
+        next_obs, _ = env.reset()
+        next_done = torch.zeros(self.num_envs).to(self.device)
+
+        # Start evaluation
+        for iteration in range(1, self.num_iterations + 1):
+
+            # Annealing the rate if instructed to do so.
+            if self.anneal_lr:
+                frac = 1.0 - (iteration - 1.0) / self.num_iterations
+                lrnow = frac * self.learning_rate
+                for joint_policy in joint_policies:
+                    for agent in joint_policy:
+                        agent.optimizer.param_groups[0]["lr"] = lrnow
+
+            for step in range(0, self.num_steps):
+
+                global_step += self.num_envs
+                obs.append(next_obs)
+                dones.append(next_done)
+
+                ##MY CODE
+                stacked_obs = torch.stack(next_obs, -1)
+
+                joint_actions = [
+                    torch.empty((0, self.action_size)).to(self.device)
+                    for _ in range(self.team_size)
+                ]
+
+                for observation, joint_policy in zip(stacked_obs, joint_policies):
+
+                    for i, agent in enumerate(joint_policy):
+
+                        with torch.no_grad():
+                            action, logprob, _, value = agent.get_action_and_value(
+                                observation[:, i]
+                            )
+                            values.append(value.flatten())
+                        actions.append(action)
+                        logprobs.append(logprob)
+
+                        joint_actions[i] = torch.cat(
+                            (
+                                joint_actions[i],
+                                action,
+                            ),
+                            dim=0,
+                        )
+
+                next_obs, rew, next_done, info = env.step(joint_actions)
+                rewards.append(rew)
+
+            # bootstrap value if not done
+            with torch.no_grad():
+                next_value = agent.get_value(next_obs).reshape(1, -1)
+                advantages = torch.zeros_like(rewards).to(self.device)
+                lastgaelam = 0
+                for t in reversed(range(self.num_steps)):
+                    if t == self.num_steps - 1:
+                        nextnonterminal = 1.0 - next_done
+                        nextvalues = next_value
+                    else:
+                        nextnonterminal = 1.0 - dones[t + 1]
+                        nextvalues = values[t + 1]
+                    delta = (
+                        rewards[t]
+                        + self.gamma * nextvalues * nextnonterminal
+                        - values[t]
+                    )
+                    advantages[t] = lastgaelam = (
+                        delta
+                        + self.gamma * self.gae_lambda * nextnonterminal * lastgaelam
+                    )
+                returns = advantages + values
+
+            # flatten the batch
+            b_obs = obs.reshape((-1,) + (self.observation_size))
+            b_logprobs = logprobs.reshape(-1)
+            b_actions = actions.reshape((-1,) + (self.action_size))
+            b_advantages = advantages.reshape(-1)
+            b_returns = returns.reshape(-1)
+            b_values = values.reshape(-1)

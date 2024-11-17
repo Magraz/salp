@@ -5,7 +5,7 @@ obs_space_dim: 16
 action_space_dim: 2
 shuffle_agents_positions: true
 
-rovers:
+agents:
   - observation_radius: 1
     position:
       spawn_rule: fixed
@@ -31,7 +31,7 @@ rovers:
       spawn_rule: fixed
       coordinates: [0.2, 0.0]
 
-pois:
+targets:
   - value: 1.0
     coupling: 3
     observation_radius: 0.15

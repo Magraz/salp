@@ -500,9 +500,8 @@ class CooperativeCoevolutionaryAlgorithm:
         env = create_env(
             self.batch_dir,
             n_envs=self.subpop_size,
+            n_agents=self.team_size,
             device=self.device,
-            team_size=self.team_size,
-            benchmark=False,
         )
 
         for n_gen in range(self.n_gens + 1):

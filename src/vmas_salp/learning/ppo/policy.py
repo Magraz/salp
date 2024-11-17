@@ -33,6 +33,14 @@ class Agent(nn.Module):
 
         self.optimizer = optim.Adam(self.parameters(), lr=lr, eps=1e-5)
 
+        # Storage setup
+        self.obs = []
+        self.actions = []
+        self.logprobs = []
+        self.rewards = []
+        self.dones = []
+        self.values = []
+
     def get_value(self, x):
         return self.critic(x)
 

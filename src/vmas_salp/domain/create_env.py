@@ -10,7 +10,12 @@ from torchrl.envs.libs.vmas import VmasEnv
 
 
 def create_env(
-    batch_dir, n_envs: int, device: str, team_size: int, benchmark: bool, **kwargs
+    batch_dir,
+    n_envs: int,
+    device: str,
+    n_agents: int,
+    benchmark: bool = False,
+    **kwargs
 ) -> Environment:
 
     env_filename = "_env.yaml"
@@ -27,24 +32,23 @@ def create_env(
     map_size = env_config["map_size"]
 
     # Agent data
-    n_agents = team_size
     agents_colors = [
         agent["color"] if agent.get("color") else "BLUE"
-        for agent in env_config["rovers"]
+        for agent in env_config["agents"]
     ]
-    agents_positions = [poi["position"]["coordinates"] for poi in env_config["rovers"]]
-    lidar_range = [rover["observation_radius"] for rover in env_config["rovers"]]
+    agents_positions = [poi["position"]["coordinates"] for poi in env_config["agents"]]
+    lidar_range = [rover["observation_radius"] for rover in env_config["agents"]]
     shuffle_agents_positions = env_config["shuffle_agents_positions"]
 
     # POIs data
-    n_pois = len(env_config["pois"])
-    poi_positions = [poi["position"]["coordinates"] for poi in env_config["pois"]]
-    poi_values = [poi["value"] for poi in env_config["pois"]]
+    n_pois = len(env_config["targets"])
+    poi_positions = [poi["position"]["coordinates"] for poi in env_config["targets"]]
+    poi_values = [poi["value"] for poi in env_config["targets"]]
     poi_colors = [
-        poi["color"] if poi.get("color") else "GREEN" for poi in env_config["pois"]
+        poi["color"] if poi.get("color") else "GREEN" for poi in env_config["targets"]
     ]
-    coupling = [poi["coupling"] for poi in env_config["pois"]]
-    obs_radius = [poi["observation_radius"] for poi in env_config["pois"]]
+    coupling = [poi["coupling"] for poi in env_config["targets"]]
+    obs_radius = [poi["observation_radius"] for poi in env_config["targets"]]
     use_order = env_config["use_order"]
 
     if benchmark:
