@@ -13,10 +13,10 @@ from vmas.simulator.core import Agent, Landmark, Box, Sphere
 from vmas.simulator.scenario import BaseScenario
 from vmas.simulator.utils import ScenarioUtils
 
-from vmas_salp.domain.custom_world import SalpWorld
+from vmas_salp.domain.world import SalpWorld
 from vmas_salp.domain.dynamics import SalpDynamics
 from vmas_salp.domain.controller import SalpController
-from vmas_salp.domain.custom_sensors import SectorDensity
+from vmas_salp.domain.sensors import SectorDensity
 from vmas_salp.domain.utils import COLOR_MAP
 import random
 

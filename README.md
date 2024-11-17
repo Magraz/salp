@@ -5,9 +5,10 @@ Run the following commands inside `src/vmas_salps` after cloning:
 2. `git submodule update`
 3. `cd VectorizedMultiAgentSimulator`
 4. `pip install -e .`
-5. `cd src`
+5. `cd ../src/BenchMARL`
 6. `pip install -e .`
-7. `pip install -r requirements.txt`
+7. `cd ../src`
+8. `pip install -r requirements.txt`
 
 ### To Run Experiment
 
