@@ -6,7 +6,7 @@ from typing import Dict, List
 
 import torch
 from torch import Tensor
-
+from typing import ValuesView
 from vmas import render_interactively
 from vmas.simulator.joints import Joint
 from vmas.simulator.core import Agent, Landmark, Box, Sphere
@@ -122,6 +122,10 @@ class SalpDomain(BaseScenario):
             )
             world.add_joint(joint)
             self.joint_list.append(joint)
+
+        # Assign neighbors to agents
+        for agent in world.agents:
+            agent.state.neighbors = self.get_neighbors(agent, world.joints)
 
         self.dist_rew = torch.zeros(batch_dim, device=device)
         self.rot_rew = self.dist_rew.clone()
@@ -241,45 +245,55 @@ class SalpDomain(BaseScenario):
 
         return covering_rew
 
+    def get_neighbors(self, agent: Agent, joints: ValuesView):
+        neighbors = []
+        links = []
+
+        # Get links
+        for joint in joints:
+
+            if agent == joint.entity_a:
+                links.append(joint.entity_b)
+            elif agent == joint.entity_b:
+                links.append(joint.entity_a)
+
+        # Get agents
+        for joint in joints:
+
+            if (joint.entity_a in links) and (joint.entity_b != agent):
+                neighbors.append(joint.entity_b)
+            elif (joint.entity_b in links) and (joint.entity_a != agent):
+                neighbors.append(joint.entity_a)
+
+        return neighbors
+
     def observation(self, agent: Agent):
 
-        # if self.step_counter == 600:
-        #     joint = Joint(
-        #         self.world.agents[0],
-        #         self.world.agents[1],
-        #         anchor_a=(0, 0),
-        #         anchor_b=(0, 0),
-        #         dist=self.agent_dist,
-        #         rotate_a=False,
-        #         rotate_b=False,
-        #         collidable=True,
-        #         width=0.01,
-        #         mass=1,
-        #     )
-        #     self.world.add_joint(joint)
-
-        # if self.step_counter == 400:
-        #     self.world.attach_joint(self.joint_list[0])
-
-        observations = []
-
-        observations.append(agent.state.pos)
-
-        observations.append(agent.state.vel)
-
         poi_sensors = agent.sensors[0].measure()[:, 4:]
-        observations.append(poi_sensors)
 
+        neighbor_states = []
+        for neighbor in agent.state.neighbors:
+            neighbor_states.extend([neighbor.state.pos, neighbor.state.vel])
+
+        # Add zeros to observation to keep size consistent
+        if len(agent.state.neighbors) < 2:
+            pos_vel = torch.ones(
+                (self.world.batch_dim, self.world.dim_p), device=self.world.device
+            ) * torch.tensor([0.0, 0.0], device=self.world.device)
+
+            neighbor_states.extend([pos_vel, pos_vel])
+
+        # Relative positions and velocities
         # for a in self.world.agents:
         #     if a != agent:
-        #         observations.append(a.state.pos - agent.state.pos)
+        # observations.append(a.state.pos - agent.state.pos)
 
         # for a in self.world.agents:
         #     if a != agent:
         #         observations.append(a.state.vel - agent.state.vel)
 
         return torch.cat(
-            observations,
+            [agent.state.pos, agent.state.vel, *neighbor_states, poi_sensors],
             dim=-1,
         )
 

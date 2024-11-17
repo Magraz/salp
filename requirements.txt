@@ -2,7 +2,7 @@ torch
 numpy
 matplotlib
 deap
-pyinput
+pynput
 opencv-python
 PyYAML
 nbconvert
