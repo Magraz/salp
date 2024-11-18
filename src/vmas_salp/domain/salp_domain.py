@@ -176,6 +176,9 @@ class SalpDomain(BaseScenario):
                 pos,
                 batch_index=env_index,
             )
+        
+        #Update gravity
+        self.world.gravity=(random.normalvariate(mu=0.0, sigma=self.current_max_value),-random.uniform(0, self.current_max_value))
 
     def process_action(self, agent: Agent):
 
