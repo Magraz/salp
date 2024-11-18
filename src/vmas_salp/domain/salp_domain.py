@@ -57,15 +57,14 @@ class SalpDomain(BaseScenario):
 
         ScenarioUtils.check_kwargs_consumed(kwargs)
 
-        self.agent_radius = 0.025
-        self.target_radius = 0.11
-
         self.device = device
 
         self.global_rew = torch.zeros(batch_dim, device=device)
         self.covered_targets = torch.zeros((batch_dim, self.n_targets), device=device)
 
         # CONSTANTS
+        self.agent_radius = 0.025
+        self.target_radius = 0.11
         self.agent_dist = 0.1
         self.u_range = 1.0
         self.current_max_value = 0.5

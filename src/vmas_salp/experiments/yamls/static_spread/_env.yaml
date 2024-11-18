@@ -51,7 +51,7 @@ agents:
 targets:
   - value: 1.0
     coupling: 1
-    observation_radius: 4.0
+    observation_radius: 8.0
     color: "RED"
     type: 0
     order: 0
