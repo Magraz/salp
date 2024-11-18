@@ -79,7 +79,7 @@ class SalpDomain(BaseScenario):
             collision_force=200,
             joint_force=200,
             gravity=(
-                random.normalvariate(mu=0.0, sigma=1.0),
+                random.normalvariate(mu=0.0, sigma=self.current_max_value),
                 -random.uniform(0, self.current_max_value),
             ),
         )
