@@ -1,78 +1,90 @@
 
-map_size: [2.0, 2.0]
+map_size: [4.0, 4.0]
 use_order: False
 obs_space_dim: 16
 action_space_dim: 2
 shuffle_agents_positions: true
 
 agents:
-  - observation_radius: 1
+  - observation_radius: 4.0
     color: "GREEN"
+    position:
+      spawn_rule: fixed
+      coordinates: [-0.3, 0.0]
+  
+  - observation_radius: 4.0
+    color: "BLACK"
     position:
       spawn_rule: fixed
       coordinates: [-0.2, 0.0]
   
-  - observation_radius: 1
-    color: "BLACK"
+  - observation_radius: 4.0
+    color: "BLUE"
     position:
       spawn_rule: fixed
       coordinates: [-0.1, 0.0]
   
-  - observation_radius: 1
-    color: "BLUE"
+  - observation_radius: 4.0
+    color: "WHITE"
     position:
       spawn_rule: fixed
       coordinates: [0.0, 0.0]
   
-  - observation_radius: 1
-    color: "WHITE"
+  - observation_radius: 4.0
+    color: "GRAY"
     position:
       spawn_rule: fixed
       coordinates: [0.1, 0.0]
   
-  - observation_radius: 1
-    color: "GRAY"
+  - observation_radius: 4.0
+    color: "LIGHT_GREEN"
     position:
       spawn_rule: fixed
       coordinates: [0.2, 0.0]
+  
+  - observation_radius: 4.0
+    color: "RED"
+    position:
+      spawn_rule: fixed
+      coordinates: [0.3, 0.0]
 
 targets:
   - value: 1.0
-    coupling: 3
-    observation_radius: 0.15
+    coupling: 4
+    observation_radius: 4.0
     color: "RED"
     type: 0
     order: 0
     position:
       spawn_rule: fixed
-      coordinates: [-0.25, 1.0]
+      coordinates: [-0.25, 3.0]
   
-  - value: 1.0
-    coupling: 3
-    observation_radius: 0.15
-    color: "RED"
-    type: 0
-    order: 0
-    position:
-      spawn_rule: fixed
-      coordinates: [0.25, -1.0]
+  # - value: 1.0
+  #   coupling: 4
+  #   observation_radius: 0.15
+  #   color: "RED"
+  #   type: 0
+  #   order: 0
+  #   position:
+  #     spawn_rule: fixed
+  #     coordinates: [0.25, -1.0]
   
-  - value: 1.0
-    coupling: 3
-    observation_radius: 0.15
-    color: "RED"
-    type: 0
-    order: 0
-    position:
-      spawn_rule: fixed
-      coordinates: [1.0, 0.25]
+  # - value: 1.0
+  #   coupling: 4
+  #   observation_radius: 0.15
+  #   color: "RED"
+  #   type: 0
+  #   order: 0
+  #   position:
+  #     spawn_rule: fixed
+  #     coordinates: [1.0, 0.25]
 
-  - value: 1.0
-    coupling: 3
-    observation_radius: 0.15
-    color: "RED"
-    type: 0
-    order: 0
-    position:
-      spawn_rule: fixed
-      coordinates: [-1.0, -0.25]
+  # - value: 1.0
+  #   coupling: 4
+  #   observation_radius: 0.15
+  #   color: "RED"
+  #   type: 0
+  #   order: 0
+  #   position:
+  #     spawn_rule: fixed
+  #     coordinates: [-1.0, -0.25]

@@ -41,11 +41,11 @@ class SalpDomain(BaseScenario):
             kwargs.pop("targets_values", []), device=device
         )
         self.agents_positions = kwargs.pop("agents_positions", [])
-        self.agents_idx_shuffled = [
+        self.agents_idx = [
             i for i, _ in enumerate(self.agents_positions[: self.n_agents])
         ]
         if kwargs.pop("shuffle_agents_positions", False):
-            random.shuffle(self.agents_idx_shuffled)
+            random.shuffle(self.agents_idx)
 
         self._min_dist_between_entities = kwargs.pop("min_dist_between_entities", 0.2)
         self._lidar_range = kwargs.pop("lidar_range", 0.35)
@@ -68,6 +68,7 @@ class SalpDomain(BaseScenario):
         # CONSTANTS
         self.agent_dist = 0.1
         self.u_range = 1.0
+        self.current_max_value = 0.5
 
         # Make world
         world = SalpWorld(
@@ -78,6 +79,10 @@ class SalpDomain(BaseScenario):
             substeps=10,
             collision_force=200,
             joint_force=200,
+            gravity=(
+                random.normalvariate(mu=0.0, sigma=1.0),
+                -random.uniform(0, self.current_max_value),
+            ),
         )
 
         # Set targets
@@ -116,8 +121,8 @@ class SalpDomain(BaseScenario):
         self.joint_list = []
         for i in range(self.n_agents - 1):
             joint = Joint(
-                world.agents[self.agents_idx_shuffled[i]],
-                world.agents[self.agents_idx_shuffled[i + 1]],
+                world.agents[self.agents_idx[i]],
+                world.agents[self.agents_idx[i + 1]],
                 anchor_a=(0, 0),
                 anchor_b=(0, 0),
                 dist=self.agent_dist,
@@ -152,14 +157,14 @@ class SalpDomain(BaseScenario):
         else:
             self.all_time_covered_targets[env_index] = False
 
-        for idx, agent in enumerate(self.world.agents):
+        for idx in range(self.n_agents):
             pos = torch.ones(
                 (self.world.batch_dim, self.world.dim_p), device=self.world.device
             ) * torch.tensor(
-                self.agents_positions[self.agents_idx_shuffled[idx]],
+                self.agents_positions[idx],
                 device=self.world.device,
             )
-            agent.set_pos(
+            self.world.agents[self.agents_idx[idx]].set_pos(
                 pos,
                 batch_index=env_index,
             )
@@ -278,7 +283,7 @@ class SalpDomain(BaseScenario):
 
     def observation(self, agent: Agent):
 
-        poi_sensors = agent.sensors[0].measure()[:, 4:]
+        # poi_sensors = agent.sensors[0].measure()[:, 4:]
 
         neighbor_states = []
         for neighbor in agent.state.neighbors:
@@ -302,7 +307,12 @@ class SalpDomain(BaseScenario):
         #         observations.append(a.state.vel - agent.state.vel)
 
         return torch.cat(
-            [agent.state.pos, agent.state.vel, *neighbor_states, poi_sensors],
+            [
+                agent.state.pos,
+                agent.state.vel,
+                *neighbor_states,
+                torch.abs(agent.state.pos - self._targets[0].state.pos),
+            ],
             dim=-1,
         )
 

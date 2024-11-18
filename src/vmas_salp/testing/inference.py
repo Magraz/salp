@@ -60,10 +60,10 @@ eval_infos = ccea.evaluateTeams(
         device=ccea.device,
         n_envs=1,
         n_agents=4,
-        viewer_zoom=1.2,
+        viewer_zoom=2.0,
         benchmark=False,
     ),
     [best_team],
     render=True,
-    save_render=True,
+    save_render=False,
 )
