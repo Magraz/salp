@@ -72,6 +72,7 @@ class SalpDomain(BaseScenario):
         if self.use_joints:
             self.u_multiplier = 2 * 1.1 ** (self.n_agents - 1)
 
+        self.gravity_x_val = random.normalvariate(mu=0.0, sigma=0.1)
         # Make world
         world = SalpWorld(
             batch_dim=batch_dim,
@@ -79,10 +80,10 @@ class SalpDomain(BaseScenario):
             y_semidim=self.y_semidim,
             device=device,
             substeps=10,
-            collision_force=200,
-            joint_force=200,
+            collision_force=400,
+            joint_force=400,
             gravity=(
-                random.normalvariate(mu=0.0, sigma=0.1),
+                self.gravity_x_val,
                 -1.0,
             ),
         )
@@ -116,7 +117,6 @@ class SalpDomain(BaseScenario):
                 color=COLOR_MAP[self.agents_colors[i]],
                 u_multiplier=self.u_multiplier,
             )
-
             agent.state.join = torch.zeros(batch_dim)
             world.add_agent(agent)
 
@@ -132,7 +132,7 @@ class SalpDomain(BaseScenario):
                     dist=self.agent_dist,
                     rotate_a=True,
                     rotate_b=True,
-                    collidable=False,
+                    collidable=True,
                     width=0,
                 )
                 world.add_joint(joint)
@@ -289,33 +289,39 @@ class SalpDomain(BaseScenario):
 
         # poi_sensors = agent.sensors[0].measure()[:, 4:]
 
-        neighbor_states = []
-        for neighbor in agent.state.neighbors:
-            neighbor_states.extend([neighbor.state.pos, neighbor.state.vel])
+        # neighbor_states = []
+        # for neighbor in agent.state.neighbors:
+        #     neighbor_states.extend([neighbor.state.pos, neighbor.state.vel])
 
-        # Add zeros to observation to keep size consistent
-        if len(agent.state.neighbors) < 2:
-            pos_vel = torch.ones(
-                (self.world.batch_dim, self.world.dim_p), device=self.world.device
-            ) * torch.tensor([0.0, 0.0], device=self.world.device)
+        # # Add zeros to observation to keep size consistent
+        # if len(agent.state.neighbors) < 2:
+        #     pos_vel = torch.ones(
+        #         (self.world.batch_dim, self.world.dim_p), device=self.world.device
+        #     ) * torch.tensor([0.0, 0.0], device=self.world.device)
 
-            neighbor_states.extend([pos_vel, pos_vel])
+        #     neighbor_states.extend([pos_vel, pos_vel])
 
-        # Relative positions and velocities
-        # for a in self.world.agents:
-        #     if a != agent:
-        # observations.append(a.state.pos - agent.state.pos)
+        # Return neighbor states
+        # return torch.cat(
+        #     [
+        #         agent.state.pos,
+        #         agent.state.vel,
+        #         *neighbor_states,
+        #         torch.abs(agent.state.pos - self._targets[0].state.pos),
+        #     ],
+        #     dim=-1,
+        # )
 
-        # for a in self.world.agents:
-        #     if a != agent:
-        #         observations.append(a.state.vel - agent.state.vel)
+        all_agents_states = []
+        for idx in self.agents_idx:
+            all_agents_states.extend(
+                [self.world.agents[idx].state.pos, self.world.agents[idx].state.vel]
+            )
 
         return torch.cat(
             [
-                agent.state.pos,
-                agent.state.vel,
-                *neighbor_states,
                 torch.abs(agent.state.pos - self._targets[0].state.pos),
+                *all_agents_states,
             ],
             dim=-1,
         )

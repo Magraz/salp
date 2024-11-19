@@ -1,5 +1,5 @@
 
-map_size: [4.0, 4.0]
+map_size: [3.0, 3.0]
 use_order: False
 obs_space_dim: 14
 action_space_dim: 2
@@ -43,7 +43,25 @@ agents:
       coordinates: [0.2, 0.0]
   
   - observation_radius: 4.0
+    color: "MAGENTA"
+    position:
+      spawn_rule: fixed
+      coordinates: [0.3, 0.0]
+  
+  - observation_radius: 4.0
+    color: "ORANGE"
+    position:
+      spawn_rule: fixed
+      coordinates: [0.3, 0.0]
+  
+  - observation_radius: 4.0
     color: "RED"
+    position:
+      spawn_rule: fixed
+      coordinates: [0.3, 0.0]
+  
+  - observation_radius: 4.0
+    color: "PURPLE"
     position:
       spawn_rule: fixed
       coordinates: [0.3, 0.0]
@@ -51,13 +69,13 @@ agents:
 targets:
   - value: 1.0
     coupling: 1
-    observation_radius: 8.0
+    observation_radius: 7.0
     color: "RED"
     type: 0
     order: 0
     position:
       spawn_rule: fixed
-      coordinates: [0.0, 3.0]
+      coordinates: [0.0, 2.0]
   
   # - value: 1.0
   #   coupling: 4
