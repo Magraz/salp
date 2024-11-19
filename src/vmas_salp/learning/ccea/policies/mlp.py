@@ -11,6 +11,8 @@ class MLP_Policy(nn.Module):  # inheriting from nn.Module!
     ):
         super(MLP_Policy, self).__init__()
 
+        self.input_size = input_size
+
         self.hidden_layers = hidden_layers
 
         self.size_per_layer = []
@@ -41,7 +43,10 @@ class MLP_Policy(nn.Module):  # inheriting from nn.Module!
             p.requires_grad_(False)
 
     def forward(self, x: torch.Tensor):
-        out = F.leaky_relu(self.fc1(x.unsqueeze(0)))
+        padding = (0, self.input_size - len(x))
+        padded_tensor = F.pad(x, padding, "constant", 0)
+
+        out = F.leaky_relu(self.fc1(padded_tensor.unsqueeze(0)))
 
         match (self.hidden_layers):
             case 2:
@@ -61,9 +66,9 @@ class MLP_Policy(nn.Module):  # inheriting from nn.Module!
 if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    model = MLP_Policy(input_size=8, hidden_layers=2, hidden_size=32, output_size=2).to(
-        device
-    )
+    model = MLP_Policy(
+        input_size=44, hidden_layers=2, hidden_size=128, output_size=2
+    ).to(device)
     model_copy = deepcopy(model)
 
     torch.set_printoptions(threshold=10_000)
@@ -71,12 +76,12 @@ if __name__ == "__main__":
 
     # print(model_copy.get_params())
 
-    input = torch.tensor([-1, -1, -1, -1, -1, -1, -1, -1], dtype=torch.float).to(device)
-    print(model_copy.forward(input))
+    # input = torch.tensor([-1, -1, -1, -1, -1, -1, -1, -1], dtype=torch.float).to(device)
+    # print(model_copy.forward(input))
 
-    rand_params = torch.rand(model_copy.get_params().size()).to(device)
-    mutated_params = torch.add(model_copy.get_params(), rand_params).to(device)
+    # rand_params = torch.rand(model_copy.get_params().size()).to(device)
+    # mutated_params = torch.add(model_copy.get_params(), rand_params).to(device)
 
-    model_copy.set_params(mutated_params)
+    # model_copy.set_params(mutated_params)
 
-    print(model_copy.forward(input))
+    # print(model_copy.forward(input))

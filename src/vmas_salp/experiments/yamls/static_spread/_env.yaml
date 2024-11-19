@@ -1,7 +1,7 @@
 
 map_size: [3.0, 3.0]
 use_order: False
-obs_space_dim: 14
+obs_space_dim: 20
 action_space_dim: 2
 shuffle_agents_positions: true
 

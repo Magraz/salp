@@ -318,9 +318,12 @@ class SalpDomain(BaseScenario):
                 [self.world.agents[idx].state.pos, self.world.agents[idx].state.vel]
             )
 
+        dist_to_target = agent.state.pos - self._targets[0].state.pos
+
         return torch.cat(
             [
-                torch.abs(agent.state.pos - self._targets[0].state.pos),
+                torch.abs(dist_to_target),
+                torch.zeros_like(dist_to_target),
                 *all_agents_states,
             ],
             dim=-1,
