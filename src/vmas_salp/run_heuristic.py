@@ -59,6 +59,8 @@ def use_vmas_env(
     D_list = []
     obs_list = []
 
+    _ = env.reset()
+
     with Listener(on_press=mc.on_press, on_release=mc.on_release) as listener:
 
         listener.join(timeout=1)
@@ -70,11 +72,16 @@ def use_vmas_env(
 
             for i, agent in enumerate(env.agents):
 
-                if i == mc.controlled_agent:
-                    cmd_action = mc.cmd_vel[:]  # + mc.join[:]
-                    action = torch.tensor(cmd_action).repeat(n_envs, 1)
-                else:
-                    action = torch.tensor([0.0, 0.0]).repeat(n_envs, 1)
+                # Move one agent at a time
+                # if i == mc.controlled_agent:
+                #     cmd_action = mc.cmd_vel[:]  # + mc.join[:]
+                #     action = torch.tensor(cmd_action).repeat(n_envs, 1)
+                # else:
+                #     action = torch.tensor([0.0, 0.0]).repeat(n_envs, 1)
+
+                # Move all agents at the same time
+                cmd_action = mc.cmd_vel[:]  # + mc.join[:]
+                action = torch.tensor(cmd_action).repeat(n_envs, 1)
 
                 actions.append(action)
 
@@ -106,7 +113,7 @@ def use_vmas_env(
                 if save_render:
                     frame_list.append(frame)
 
-    # print("G List Agg")
+    # print("G List Agg")agents
     # G_agg = torch.sum(torch.stack(G_list), dim=0)
     # print(G_agg)
     # print("D List Agg")
@@ -162,29 +169,33 @@ if __name__ == "__main__":
     with open(str(env_file), "r") as file:
         env_config = yaml.safe_load(file)
 
-    # Environment data
+    # Environment dataw
     map_size = env_config["map_size"]
 
     # Agent data
-    n_agents = len(env_config["rovers"])
-    agents_positions = [poi["position"]["coordinates"] for poi in env_config["rovers"]]
-    lidar_range = [rover["observation_radius"] for rover in env_config["rovers"]]
+    n_agents = 4
+    agents_positions = [poi["position"]["coordinates"] for poi in env_config["agents"]]
+    lidar_range = [rover["observation_radius"] for rover in env_config["agents"]]
 
     # POIs data
-    poi_positions = [poi["position"]["coordinates"] for poi in env_config["pois"]]
+    poi_positions = [poi["position"]["coordinates"] for poi in env_config["targets"]]
     n_envs = 3
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     use_vmas_env(
         name=f"{args["batch"]}_{n_agents}a",
         env=create_env(
-            batch_dir=batch_dir, n_envs=n_envs, device=device, benchmark=False
+            batch_dir=batch_dir,
+            n_envs=n_envs,
+            device=device,
+            benchmark=False,
+            n_agents=n_agents,
         ),
         render=True,
         save_render=False,
         device=device,
         n_envs=n_envs,
-        n_steps=1000,
+        n_steps=200,
         # kwargs
         n_agents=n_agents,
         targets_positions=poi_positions,

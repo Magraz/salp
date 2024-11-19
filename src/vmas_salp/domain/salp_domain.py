@@ -29,31 +29,33 @@ class SalpDomain(BaseScenario):
         self.x_semidim = kwargs.pop("x_semidim", 1)
         self.y_semidim = kwargs.pop("y_semidim", 1)
 
-        self.viewer_zoom = kwargs.pop("viewer_zoom", 1)
+        self.viewer_zoom = kwargs.pop("viewer_zoom", 1.5)
 
-        self.n_agents = kwargs.pop("n_agents", 5)
-        self.agents_colors = kwargs.pop("agents_colors", [])
-        self.n_targets = kwargs.pop("n_targets", 7)
-        self.use_order = kwargs.pop("use_order", False)
-        self.targets_positions = kwargs.pop("targets_positions", [])
-        self.targets_colors = kwargs.pop("targets_colors", [])
+        self.n_agents = kwargs.pop("n_agents", 2)
+        self.agents_colors = kwargs.pop("agents_colors", ["BLUE"])
+        self.n_targets = kwargs.pop("n_targets", 1)
+        self.targets_positions = kwargs.pop("targets_positions", [[0.0, 3.0]])
+        self.targets_colors = kwargs.pop("targets_colors", ["RED"])
         self.targets_values = torch.tensor(
-            kwargs.pop("targets_values", []), device=device
+            kwargs.pop("targets_values", [1.0]), device=device
         )
-        self.agents_positions = kwargs.pop("agents_positions", [])
+        self.agents_positions = kwargs.pop(
+            "agents_positions", [[-0.1, 0.0], [0.0, 0.0]]
+        )
         self.agents_idx = [
             i for i, _ in enumerate(self.agents_positions[: self.n_agents])
         ]
         if kwargs.pop("shuffle_agents_positions", False):
             random.shuffle(self.agents_idx)
 
-        self._min_dist_between_entities = kwargs.pop("min_dist_between_entities", 0.2)
+        self._min_dist_between_entities = kwargs.pop("min_dist_between_entities", 0.1)
         self._lidar_range = kwargs.pop("lidar_range", 0.35)
         self._covering_range = kwargs.pop("covering_range", 0.25)
 
-        self._agents_per_target = kwargs.pop("agents_per_target", 2)
+        self._agents_per_target = kwargs.pop("agents_per_target", 1)
         self.targets_respawn = kwargs.pop("targets_respawn", False)
         self.random_spawn = kwargs.pop("random_spawn", False)
+        self.use_joints = kwargs.pop("use_joints", True)
 
         ScenarioUtils.check_kwargs_consumed(kwargs)
 
@@ -66,8 +68,9 @@ class SalpDomain(BaseScenario):
         self.agent_radius = 0.025
         self.target_radius = 0.11
         self.agent_dist = 0.1
-        self.u_range = 1.0
-        self.current_max_value = 0.5
+        self.u_multiplier = 1.0
+        if self.use_joints:
+            self.u_multiplier = 2 * 1.1 ** (self.n_agents - 1)
 
         # Make world
         world = SalpWorld(
@@ -79,8 +82,8 @@ class SalpDomain(BaseScenario):
             collision_force=200,
             joint_force=200,
             gravity=(
-                random.normalvariate(mu=0.0, sigma=self.current_max_value),
-                -random.uniform(0, self.current_max_value),
+                random.normalvariate(mu=0.0, sigma=0.1),
+                -1.0,
             ),
         )
 
@@ -111,6 +114,7 @@ class SalpDomain(BaseScenario):
                 sensors=([SectorDensity(world, max_range=self._lidar_range)]),
                 collide=True,
                 color=COLOR_MAP[self.agents_colors[i]],
+                u_multiplier=self.u_multiplier,
             )
 
             agent.state.join = torch.zeros(batch_dim)
@@ -118,20 +122,21 @@ class SalpDomain(BaseScenario):
 
         # Add joints
         self.joint_list = []
-        for i in range(self.n_agents - 1):
-            joint = Joint(
-                world.agents[self.agents_idx[i]],
-                world.agents[self.agents_idx[i + 1]],
-                anchor_a=(0, 0),
-                anchor_b=(0, 0),
-                dist=self.agent_dist,
-                rotate_a=True,
-                rotate_b=True,
-                collidable=True,
-                width=0,
-            )
-            world.add_joint(joint)
-            self.joint_list.append(joint)
+        if self.use_joints:
+            for i in range(self.n_agents - 1):
+                joint = Joint(
+                    world.agents[self.agents_idx[i]],
+                    world.agents[self.agents_idx[i + 1]],
+                    anchor_a=(0, 0),
+                    anchor_b=(0, 0),
+                    dist=self.agent_dist,
+                    rotate_a=True,
+                    rotate_b=True,
+                    collidable=False,
+                    width=0,
+                )
+                world.add_joint(joint)
+                self.joint_list.append(joint)
 
         # Assign neighbors to agents
         for agent in world.agents:
@@ -176,9 +181,6 @@ class SalpDomain(BaseScenario):
                 pos,
                 batch_index=env_index,
             )
-        
-        #Update gravity
-        self.world.gravity=(random.normalvariate(mu=0.0, sigma=self.current_max_value),-random.uniform(0, self.current_max_value))
 
     def process_action(self, agent: Agent):
 
@@ -340,4 +342,4 @@ class SalpDomain(BaseScenario):
 
 
 if __name__ == "__main__":
-    render_interactively(__file__, joints=True)
+    render_interactively(__file__, joints=True, control_two_agents=True)
