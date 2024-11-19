@@ -496,15 +496,15 @@ class CooperativeCoevolutionaryAlgorithm:
             # Create csv file for saving evaluation fitnesses
             self.createFitnessCSV(fitness_dir)
 
-        # Create environment
-        env = create_env(
-            self.batch_dir,
-            n_envs=self.subpop_size,
-            n_agents=self.team_size,
-            device=self.device,
-        )
-
         for n_gen in range(self.n_gens + 1):
+
+            # Create environment
+            env = create_env(
+                self.batch_dir,
+                n_envs=self.subpop_size,
+                n_agents=self.team_size,
+                device=self.device,
+            )
 
             # Set gen counter global var
             self.gen = n_gen
