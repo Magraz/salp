@@ -70,8 +70,8 @@ class SalpDomain(BaseScenario):
         self.agent_dist = 0.05
         self.u_multiplier = 2.0
 
-        self.gravity_x_val = random.normalvariate(mu=0.0, sigma=0.5)
-        self.gravity_y_val = -0.5
+        self.gravity_x_val = random.normalvariate(mu=0.0, sigma=0.2)
+        self.gravity_y_val = -0.4
         # Make world
         world = SalpWorld(
             batch_dim=batch_dim,
@@ -195,7 +195,7 @@ class SalpDomain(BaseScenario):
             * -agent.action.u[:, 0]
         )
 
-        agent.action.u[:, :2] = torch.stack((x, y), dim=-1)
+        agent.state.force = torch.stack((x, y), dim=-1)
 
         # Join action
         # if agent.state.join.any():

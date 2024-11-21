@@ -78,7 +78,7 @@ def use_vmas_env(
                 #     action = torch.tensor([0.0, 0.0]).repeat(n_envs, 1)
 
                 # Move all agents at the same time
-                cmd_action = mc.cmd_vel[:]  # + mc.join[:]
+                cmd_action = mc.cmd_vel[-1]  # + mc.join[:]
                 action = torch.tensor(cmd_action).repeat(n_envs, 1)
 
                 actions.append(action)
@@ -177,7 +177,7 @@ if __name__ == "__main__":
 
     # POIs data
     poi_positions = [poi["position"]["coordinates"] for poi in env_config["targets"]]
-    n_envs = 1
+    n_envs = 3
 
     use_vmas_env(
         name=f"{args["batch"]}_{n_agents}a",

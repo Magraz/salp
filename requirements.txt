@@ -6,3 +6,5 @@ pynput
 opencv-python
 PyYAML
 nbconvert
+PyAV
+torchvision
