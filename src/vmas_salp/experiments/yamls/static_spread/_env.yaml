@@ -10,19 +10,19 @@ agents:
     color: "GREEN"
     position:
       spawn_rule: fixed
-      coordinates: [-0.3, 0.0]
+      coordinates: [-0.15, 0.0]
   
   - observation_radius: 4.0
     color: "BLACK"
     position:
       spawn_rule: fixed
-      coordinates: [-0.2, 0.0]
+      coordinates: [-0.1, 0.0]
   
   - observation_radius: 4.0
     color: "BLUE"
     position:
       spawn_rule: fixed
-      coordinates: [-0.1, 0.0]
+      coordinates: [-0.05, 0.0]
   
   - observation_radius: 4.0
     color: "WHITE"
@@ -34,19 +34,19 @@ agents:
     color: "GRAY"
     position:
       spawn_rule: fixed
-      coordinates: [0.1, 0.0]
+      coordinates: [0.05, 0.0]
   
   - observation_radius: 4.0
     color: "LIGHT_GREEN"
     position:
       spawn_rule: fixed
-      coordinates: [0.2, 0.0]
+      coordinates: [0.1, 0.0]
   
   - observation_radius: 4.0
     color: "MAGENTA"
     position:
       spawn_rule: fixed
-      coordinates: [0.3, 0.0]
+      coordinates: [0.15, 0.0]
   
   - observation_radius: 4.0
     color: "ORANGE"

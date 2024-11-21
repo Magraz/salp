@@ -54,9 +54,7 @@ def use_vmas_env(
     mc = manual_control(n_agents)
 
     G_total = torch.zeros((n_agents, n_envs)).to(device)
-    D_total = torch.zeros((n_agents, n_envs)).to(device)
     G_list = []
-    D_list = []
     obs_list = []
 
     _ = env.reset()
@@ -97,7 +95,7 @@ def use_vmas_env(
 
             if any(tensor.any() for tensor in rews):
                 print("G")
-                print(G)
+                print(obs)
 
                 # print("Total G")
                 # print(G_total)
@@ -179,24 +177,23 @@ if __name__ == "__main__":
 
     # POIs data
     poi_positions = [poi["position"]["coordinates"] for poi in env_config["targets"]]
-    n_envs = 3
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    n_envs = 1
 
     use_vmas_env(
         name=f"{args["batch"]}_{n_agents}a",
         env=create_env(
             batch_dir=batch_dir,
             n_envs=n_envs,
-            device=device,
+            device="cpu",
             benchmark=False,
             n_agents=n_agents,
-            viewer_zoom=1.8,
+            viewer_zoom=1.7,
         ),
         render=True,
         save_render=False,
-        device=device,
+        device="cpu",
         n_envs=n_envs,
-        n_steps=300,
+        n_steps=1000,
         # kwargs
         n_agents=n_agents,
         targets_positions=poi_positions,

@@ -67,24 +67,24 @@ class SalpDomain(BaseScenario):
         # CONSTANTS
         self.agent_radius = 0.025
         self.target_radius = 0.11
-        self.agent_dist = 0.1
-        self.u_multiplier = 1.0
-        if self.use_joints:
-            self.u_multiplier = 2 * 1.1 ** (self.n_agents - 1)
+        self.agent_dist = 0.05
+        self.u_multiplier = 2.0
 
-        self.gravity_x_val = random.normalvariate(mu=0.0, sigma=0.1)
+        self.gravity_x_val = random.normalvariate(mu=0.0, sigma=0.5)
+        self.gravity_y_val = -0.5
         # Make world
         world = SalpWorld(
             batch_dim=batch_dim,
             x_semidim=self.x_semidim,
             y_semidim=self.y_semidim,
             device=device,
-            substeps=10,
-            collision_force=400,
-            joint_force=400,
+            substeps=15,
+            collision_force=1500,
+            joint_force=900,
+            torque_constraint_force=2.0,
             gravity=(
                 self.gravity_x_val,
-                -1.0,
+                self.gravity_y_val,
             ),
         )
 
@@ -110,10 +110,9 @@ class SalpDomain(BaseScenario):
             agent = Agent(
                 name=f"agent_{i}",
                 render_action=True,
-                shape=Sphere(radius=self.agent_radius),
+                shape=Box(length=0.025, width=0.04),
                 dynamics=SalpDynamics(),
                 sensors=([SectorDensity(world, max_range=self._lidar_range)]),
-                collide=True,
                 color=COLOR_MAP[self.agents_colors[i]],
                 u_multiplier=self.u_multiplier,
             )
@@ -130,9 +129,9 @@ class SalpDomain(BaseScenario):
                     anchor_a=(0, 0),
                     anchor_b=(0, 0),
                     dist=self.agent_dist,
-                    rotate_a=True,
-                    rotate_b=True,
-                    collidable=True,
+                    rotate_a=False,
+                    rotate_b=False,
+                    collidable=False,
                     width=0,
                 )
                 world.add_joint(joint)
@@ -147,6 +146,8 @@ class SalpDomain(BaseScenario):
         self.vel_reward = self.dist_rew.clone()
         self.pos_rew = self.dist_rew.clone()
         self.t = self.dist_rew.clone()
+
+        world.zero_grad()
 
         return world
 
@@ -185,19 +186,20 @@ class SalpDomain(BaseScenario):
     def process_action(self, agent: Agent):
 
         # Single DOF movement
-        # x = (
-        #     torch.cos(agent.state.rot + 1.5 * torch.pi).squeeze(-1)
-        #     * -agent.action.u[:, 0]
-        # )
-        # y = (
-        #     torch.sin(agent.state.rot + 1.5 * torch.pi).squeeze(-1)
-        #     * -agent.action.u[:, 0]
-        # )
+        x = (
+            torch.cos(agent.state.rot + 1.5 * torch.pi).squeeze(-1)
+            * -agent.action.u[:, 0]
+        )
+        y = (
+            torch.sin(agent.state.rot + 1.5 * torch.pi).squeeze(-1)
+            * -agent.action.u[:, 0]
+        )
 
-        # agent.action.u[:, :2] = torch.stack((x, y), dim=-1)
+        agent.action.u[:, :2] = torch.stack((x, y), dim=-1)
 
-        if agent.state.join.any():
-            self.world.detach_joint(self.joint_list[0])
+        # Join action
+        # if agent.state.join.any():
+        #     self.world.detach_joint(self.joint_list[0])
 
     def calculate_global_reward(
         self, targets_pos: torch.Tensor, agent: Agent

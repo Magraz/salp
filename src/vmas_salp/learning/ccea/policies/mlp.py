@@ -54,7 +54,7 @@ class MLP_Policy(nn.Module):  # inheriting from nn.Module!
 
         out = self.output(out)
 
-        return F.tanh(out)
+        return F.sigmoid(out)
 
     def get_params(self):
         return nn.utils.parameters_to_vector(self.parameters())
