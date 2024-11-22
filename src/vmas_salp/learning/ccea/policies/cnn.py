@@ -8,21 +8,21 @@ class CNN_Policy(nn.Module):  # inheriting from nn.Module!
 
     def __init__(
         self,
-        img_size,
     ):
         super(CNN_Policy, self).__init__()
 
-        self.cnn = nn.Conv2d(in_channels=2, out_channels=8, kernel_size=img_size // 4)
-        self.maxpool = nn.AvgPool2d(kernel_size=img_size // 6, stride=2)
-        self.linear = nn.Linear(648, 2)
+        self.cnn = nn.Conv1d(in_channels=1, out_channels=16, kernel_size=5, stride=5)
+        self.cnn2 = nn.Conv1d(in_channels=16, out_channels=32, kernel_size=5, stride=5)
+        self.global_avg_pool = nn.AdaptiveAvgPool1d(output_size=1)
+        self.linear = nn.Linear(32, 1)
         self.num_params = nn.utils.parameters_to_vector(self.parameters()).size()[0]
 
     def forward(self, x: torch.Tensor):
-        out = self.cnn(x)
-        out = F.leaky_relu(out)
-        out = self.maxpool(out)
+        out = F.leaky_relu(self.cnn(x))
+        out = F.leaky_relu(self.cnn2(out))
+        out = self.global_avg_pool(out)
         out = self.linear(out.flatten())
-        return F.tanh(out)
+        return F.sigmoid(out)
 
     def get_params(self):
         return nn.utils.parameters_to_vector(self.parameters())
@@ -34,11 +34,11 @@ class CNN_Policy(nn.Module):  # inheriting from nn.Module!
 if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    model = CNN_Policy(img_size=25).to(device)
+    model = CNN_Policy(input_size=15).to(device)
     model_copy = deepcopy(model)
     print(model_copy.num_params)
 
-    input = torch.ones((2, 25, 25), dtype=torch.float).to(device)
+    input = torch.ones((1, 160), dtype=torch.float).to(device)
     print(model_copy.forward(input))
 
     rand_params = torch.rand(model_copy.get_params().size()).to(device)

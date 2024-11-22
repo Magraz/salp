@@ -46,6 +46,13 @@ MLP_POLICY_CONFIG = PolicyConfig(
     output_multiplier=OUTPUT_MULTIPLIER,
 )
 
+CNN_POLICY_CONFIG = PolicyConfig(
+    type=PolicyEnum.CNN,
+    weight_initialization=WEIGHT_INITIALIZATION,
+    output_multiplier=OUTPUT_MULTIPLIER,
+    hidden_layers=0,
+)
+
 G_CCEA = CCEAConfig(
     n_steps=N_STEPS,
     n_gens=N_GENS,
@@ -78,7 +85,11 @@ G_MLP = ExperimentConfig(
 G_GRU = deepcopy(G_MLP)
 G_GRU.policy_config = GRU_POLICY_CONFIG
 
+G_CNN = deepcopy(G_MLP)
+G_CNN.policy_config = CNN_POLICY_CONFIG
+
 EXP_DICTS = [
     {"name": "g_gru", "config": asdict(G_GRU)},
     {"name": "g_mlp", "config": asdict(G_MLP)},
+    {"name": "g_cnn", "config": asdict(G_CNN)},
 ]

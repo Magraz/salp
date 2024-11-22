@@ -95,7 +95,7 @@ def use_vmas_env(
 
             if any(tensor.any() for tensor in rews):
                 print("G")
-                print(obs)
+                print(G)
 
                 # print("Total G")
                 # print(G_total)

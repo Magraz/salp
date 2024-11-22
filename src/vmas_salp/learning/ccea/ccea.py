@@ -158,20 +158,18 @@ class CooperativeCoevolutionaryAlgorithm:
 
             case PolicyEnum.GRU:
                 agent_nn = GRU_Policy(
-                    input_size=4,
+                    input_size=5,
                     hidden_size=self.policy_hidden_layers[0],
                     hidden_layers=len(self.policy_hidden_layers),
                     output_size=self.action_size,
                 ).to(self.device)
 
             case PolicyEnum.CNN:
-                agent_nn = CNN_Policy(
-                    img_size=self.image_size,
-                ).to(self.device)
+                agent_nn = CNN_Policy().to(self.device)
 
             case PolicyEnum.MLP:
                 agent_nn = MLP_Policy(
-                    input_size=42,
+                    input_size=55,
                     hidden_layers=len(self.policy_hidden_layers),
                     hidden_size=self.policy_hidden_layers[0],
                     output_size=self.action_size,

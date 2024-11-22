@@ -57,6 +57,8 @@ class SalpDomain(BaseScenario):
         self.random_spawn = kwargs.pop("random_spawn", False)
         self.use_joints = kwargs.pop("use_joints", True)
 
+        self.state_representation = "all_states"
+
         ScenarioUtils.check_kwargs_consumed(kwargs)
 
         self.device = device
@@ -81,7 +83,7 @@ class SalpDomain(BaseScenario):
             substeps=15,
             collision_force=1500,
             joint_force=900,
-            torque_constraint_force=2.0,
+            torque_constraint_force=1.5,
             gravity=(
                 self.gravity_x_val,
                 self.gravity_y_val,
@@ -224,25 +226,23 @@ class SalpDomain(BaseScenario):
             covered_targets_dists == 0, float("inf"), covered_targets_dists
         )
 
-        min_covered_targets_dists, _ = torch.min(masked_covered_targets_dists, dim=1)
+        clamped_covered_targets_dists = torch.clamp(masked_covered_targets_dists, min=1e-2)
 
-        min_covered_targets_dists = torch.clamp(min_covered_targets_dists, min=1e-2)
-
-        min_covered_targets_dists[torch.isinf(min_covered_targets_dists)] = 0
+        clamped_covered_targets_dists[torch.isinf(clamped_covered_targets_dists)] = 0
 
         global_reward_spread = torch.log10(
-            self.covered_targets / min_covered_targets_dists
+            self.covered_targets.squeeze(-1) / clamped_covered_targets_dists
         )
 
-        global_reward_spread *= self.targets_values
+        global_reward_spread *= self.targets_values / self.n_agents
 
         global_reward_spread[torch.isnan(global_reward_spread)] = 0
         global_reward_spread[torch.isinf(global_reward_spread)] = 0
 
-        return torch.sum(
+        return torch.sum(torch.sum(
             global_reward_spread,
             dim=1,
-        )
+        ), dim=-1)
 
     def reward(self, agent: Agent):
         is_first = agent == self.world.agents[0]
@@ -286,50 +286,82 @@ class SalpDomain(BaseScenario):
                 neighbors.append(joint.entity_a)
 
         return neighbors
-
-    def observation(self, agent: Agent):
-
+    
+    def neighbors_representation(self, agent: Agent):
         # poi_sensors = agent.sensors[0].measure()[:, 4:]
 
-        # neighbor_states = []
-        # for neighbor in agent.state.neighbors:
-        #     neighbor_states.extend([neighbor.state.pos, neighbor.state.vel])
+        neighbor_states = []
+        for neighbor in agent.state.neighbors:
+            neighbor_states.extend([neighbor.state.pos, neighbor.state.vel, neighbor.state.rot])
 
-        # # Add zeros to observation to keep size consistent
-        # if len(agent.state.neighbors) < 2:
-        #     pos_vel = torch.ones(
-        #         (self.world.batch_dim, self.world.dim_p), device=self.world.device
-        #     ) * torch.tensor([0.0, 0.0], device=self.world.device)
+        # Add zeros to observation to keep size consistent
+        if len(agent.state.neighbors) < 2:
+            pos_vel = torch.ones(
+                (self.world.batch_dim, self.world.dim_p), device=self.world.device
+            ) * torch.tensor([0.0, 0.0, 0.0], device=self.world.device)
 
-        #     neighbor_states.extend([pos_vel, pos_vel])
-
-        # Return neighbor states
-        # return torch.cat(
-        #     [
-        #         agent.state.pos,
-        #         agent.state.vel,
-        #         *neighbor_states,
-        #         torch.abs(agent.state.pos - self._targets[0].state.pos),
-        #     ],
-        #     dim=-1,
-        # )
-
-        all_agents_states = []
-        for idx in self.agents_idx:
-            all_agents_states.extend(
-                [self.world.agents[idx].state.pos, self.world.agents[idx].state.vel]
-            )
-
-        dist_to_target = agent.state.pos - self._targets[0].state.pos
+            neighbor_states.extend([pos_vel, pos_vel])
+        
+        dist_to_target = torch.abs(agent.state.pos - self._targets[0].state.pos)
 
         return torch.cat(
             [
-                torch.abs(dist_to_target),
-                torch.zeros_like(dist_to_target),
+                dist_to_target,
+                torch.zeros_like(agent.state.vel),
+                torch.zeros_like(agent.state.rot),
+                agent.state.pos,
+                agent.state.vel,
+                agent.state.rot,
+                *neighbor_states,
+                
+            ],
+            dim=-1,
+        )
+    
+    def all_agents_representation(self, agent: Agent):
+
+        all_agents_states = []
+
+        for idx in self.agents_idx:
+            all_agents_states.extend(
+                [self.world.agents[idx].state.pos, self.world.agents[idx].state.vel, self.world.agents[idx].state.rot]
+            )
+
+        dist_to_target = torch.abs(agent.state.pos - self._targets[0].state.pos)
+
+        return torch.cat(
+            [
+                dist_to_target,
+                torch.zeros_like(agent.state.vel),
+                torch.zeros_like(agent.state.rot),
                 *all_agents_states,
             ],
             dim=-1,
         )
+
+    def single_agent_representation(self, agent: Agent):
+
+        dist_to_target = torch.abs(agent.state.pos - self._targets[0].state.pos)
+
+        return torch.cat(
+            [
+                dist_to_target,
+                agent.state.pos,
+                agent.state.vel,
+                agent.state.rot,
+            ],
+            dim=-1,
+        )
+
+    def observation(self, agent: Agent):
+
+        match(self.state_representation):
+            case "neighbor":
+                return self.neighbors_representation(agent)
+            case "all_states":
+                return self.all_agents_representation(agent)
+            case "single_state":
+                return self.single_agent_representation(agent)
 
     def info(self, agent: Agent) -> Dict[str, Tensor]:
         return {
