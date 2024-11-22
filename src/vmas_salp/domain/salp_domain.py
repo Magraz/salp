@@ -17,7 +17,7 @@ from vmas_salp.domain.world import SalpWorld
 from vmas_salp.domain.dynamics import SalpDynamics
 from vmas_salp.domain.controller import SalpController
 from vmas_salp.domain.sensors import SectorDensity
-from vmas_salp.domain.utils import COLOR_MAP
+from vmas_salp.domain.utils import COLOR_MAP, sample_filtered_normal
 import random
 
 if typing.TYPE_CHECKING:
@@ -72,7 +72,7 @@ class SalpDomain(BaseScenario):
         self.agent_dist = 0.05
         self.u_multiplier = 2.0
 
-        self.gravity_x_val = random.normalvariate(mu=0.0, sigma=0.2)
+        self.gravity_x_val = sample_filtered_normal(mean=0.0, std_dev=0.25,threshold=0.1)
         self.gravity_y_val = -0.4
         # Make world
         world = SalpWorld(

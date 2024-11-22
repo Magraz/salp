@@ -13,7 +13,7 @@ from vmas_salp.domain.create_env import create_env
 from dataclasses import asdict
 
 batch_name = "static_spread"
-experiment_name = "g_mlp"
+experiment_name = "g_cnn"
 trial_id = 0
 checkpoint_path = f"./src/vmas_salp/testing/checkpoint.pickle"
 batch_dir = f"./src/vmas_salp/experiments/yamls/{batch_name}"
@@ -59,11 +59,11 @@ eval_infos = ccea.evaluateTeams(
         batch_dir=batch_dir,
         device=ccea.device,
         n_envs=1,
-        n_agents=4,
+        n_agents=8,
         viewer_zoom=1.8,
         benchmark=False,
     ),
     [best_team],
     render=True,
-    save_render=False,
+    save_render=True,
 )
