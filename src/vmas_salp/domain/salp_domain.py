@@ -234,14 +234,14 @@ class SalpDomain(BaseScenario):
             self.covered_targets.squeeze(-1) / clamped_covered_targets_dists
         )
 
-        global_reward_spread *= self.targets_values / self.n_agents
+        global_reward_spread *= self.targets_values / (self.n_agents * self.world.batch_dim)
 
         global_reward_spread[torch.isnan(global_reward_spread)] = 0
         global_reward_spread[torch.isinf(global_reward_spread)] = 0
 
         return torch.sum(torch.sum(
             global_reward_spread,
-            dim=1,
+            dim=-1,
         ), dim=-1)
 
     def reward(self, agent: Agent):
