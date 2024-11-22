@@ -234,7 +234,7 @@ class CooperativeCoevolutionaryAlgorithm:
         # Store joint states per environment for the first state
         agent_positions = torch.stack([agent.state.pos for agent in env.agents], dim=0)
         joint_states_per_env = [
-            torch.empty((0, self.action_size)).to(self.device) for _ in teams
+            torch.empty((0, 2)).to(self.device) for _ in teams
         ]
 
         tranposed_stacked_obs = (
@@ -255,7 +255,6 @@ class CooperativeCoevolutionaryAlgorithm:
             )
 
         G_list = []
-        D_list = []
         frame_list = []
 
         # Start evaluation
@@ -264,14 +263,14 @@ class CooperativeCoevolutionaryAlgorithm:
             stacked_obs = torch.stack(observations, -1)
 
             actions = [
-                torch.empty((0, self.action_size)).to(self.device)
+                torch.empty((0,self.action_size)).to(self.device)
                 for _ in range(self.team_size)
             ]
 
             for observation, joint_policy in zip(stacked_obs, joint_policies):
 
                 for i, policy in enumerate(joint_policy):
-                    policy_output = policy.forward(observation[:, i])
+                    policy_output = policy.forward(observation[:, i]).unsqueeze(-1)
                     actions[i] = torch.cat(
                         (
                             actions[i],
@@ -299,10 +298,6 @@ class CooperativeCoevolutionaryAlgorithm:
                 )
 
             G_list.append(torch.stack([g[: len(teams)] for g in rewards], dim=0)[0])
-
-            D_list.append(
-                torch.stack([d[len(teams) : len(teams) * 2] for d in rewards], dim=0)
-            )
 
             # Visualization
             if render:
@@ -335,7 +330,7 @@ class CooperativeCoevolutionaryAlgorithm:
                 agent_fitnesses=g_per_env[i],
                 joint_traj=JointTrajectory(
                     joint_state_traj=joint_states_per_env[i].reshape(
-                        self.team_size, self.n_steps + 1, self.action_size
+                        self.team_size, self.n_steps + 1, 2
                     ),
                     joint_obs_traj=joint_observations_per_env[i].reshape(
                         self.team_size, self.n_steps + 1, self.observation_size

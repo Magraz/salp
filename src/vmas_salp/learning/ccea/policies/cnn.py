@@ -17,8 +17,12 @@ class CNN_Policy(nn.Module):  # inheriting from nn.Module!
         self.linear = nn.Linear(32, 1)
         self.num_params = nn.utils.parameters_to_vector(self.parameters()).size()[0]
 
+        # Disable gradient calcs
+        for p in self.parameters():
+            p.requires_grad_(False)
+
     def forward(self, x: torch.Tensor):
-        out = F.leaky_relu(self.cnn(x))
+        out = F.leaky_relu(self.cnn(x.unsqueeze(0)))
         out = F.leaky_relu(self.cnn2(out))
         out = self.global_avg_pool(out)
         out = self.linear(out.flatten())

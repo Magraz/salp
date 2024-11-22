@@ -80,7 +80,7 @@ G_MLP = ExperimentConfig(
     n_gens_between_save=N_GENS_BETWEEN_SAVE,
     policy_config=MLP_POLICY_CONFIG,
     ccea_config=G_CCEA,
-    team_size=4,
+    team_size=8,
 )
 G_GRU = deepcopy(G_MLP)
 G_GRU.policy_config = GRU_POLICY_CONFIG

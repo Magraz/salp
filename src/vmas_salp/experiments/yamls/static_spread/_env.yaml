@@ -1,8 +1,8 @@
 
 map_size: [3.0, 3.0]
 use_order: False
-obs_space_dim: 20
-action_space_dim: 2
+obs_space_dim: 45
+action_space_dim: 1
 shuffle_agents_positions: true
 
 agents:
@@ -54,17 +54,17 @@ agents:
       spawn_rule: fixed
       coordinates: [0.3, 0.0]
   
-  - observation_radius: 4.0
-    color: "RED"
-    position:
-      spawn_rule: fixed
-      coordinates: [0.3, 0.0]
+  # - observation_radius: 4.0
+  #   color: "RED"
+  #   position:
+  #     spawn_rule: fixed
+  #     coordinates: [0.3, 0.0]
   
-  - observation_radius: 4.0
-    color: "PURPLE"
-    position:
-      spawn_rule: fixed
-      coordinates: [0.3, 0.0]
+  # - observation_radius: 4.0
+  #   color: "PURPLE"
+  #   position:
+  #     spawn_rule: fixed
+  #     coordinates: [0.3, 0.0]
 
 targets:
   - value: 1.0
