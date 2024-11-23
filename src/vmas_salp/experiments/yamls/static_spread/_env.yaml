@@ -1,6 +1,5 @@
 
 map_size: [3.0, 3.0]
-use_order: False
 obs_space_dim: 45
 action_space_dim: 1
 shuffle_agents_positions: true

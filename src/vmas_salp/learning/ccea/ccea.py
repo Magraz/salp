@@ -270,7 +270,7 @@ class CooperativeCoevolutionaryAlgorithm:
             for observation, joint_policy in zip(stacked_obs, joint_policies):
 
                 for i, policy in enumerate(joint_policy):
-                    policy_output = policy.forward(observation[:, i]).unsqueeze(-1)
+                    policy_output = policy.forward(observation[:, i])
                     actions[i] = torch.cat(
                         (
                             actions[i],

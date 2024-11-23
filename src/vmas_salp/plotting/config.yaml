@@ -1,7 +1,7 @@
 #Experiment config
 batch_name: "static_spread"
-experiment_names: ["g_mlp"]
+experiment_names: ["g_cnn"]
 trials_start: 0
 trials_finish: 10
-data_points: 20
+data_points: 220
 moving_avg_window_size: 2

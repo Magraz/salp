@@ -26,7 +26,7 @@ class CNN_Policy(nn.Module):  # inheriting from nn.Module!
         out = F.leaky_relu(self.cnn2(out))
         out = self.global_avg_pool(out)
         out = self.linear(out.flatten())
-        return F.sigmoid(out)
+        return F.sigmoid(out).unsqueeze(-1)
 
     def get_params(self):
         return nn.utils.parameters_to_vector(self.parameters())

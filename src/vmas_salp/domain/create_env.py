@@ -49,7 +49,6 @@ def create_env(
     ]
     coupling = [poi["coupling"] for poi in env_config["targets"]]
     obs_radius = [poi["observation_radius"] for poi in env_config["targets"]]
-    use_order = env_config["use_order"] if env_config.get("use_order") else False
 
     if benchmark:
         # Set up the enviornment
@@ -93,7 +92,6 @@ def create_env(
             agents_per_target=coupling[0],
             covering_range=obs_radius[0],
             lidar_range=lidar_range[0],
-            use_order=use_order,
             viewer_zoom=kwargs.pop("viewer_zoom", 1.8),
             shuffle_agents_positions=shuffle_agents_positions,
         )

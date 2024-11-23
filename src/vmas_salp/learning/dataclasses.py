@@ -49,7 +49,6 @@ class POIConfig:
 @dataclass
 class EnvironmentConfig:
     map_size: tuple[int]
-    use_order: bool
     shuffle_agents_positions: bool
     agents: list[RoversConfig]
     targets: list[POIConfig]
