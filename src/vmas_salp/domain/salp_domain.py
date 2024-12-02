@@ -56,7 +56,7 @@ class SalpDomain(BaseScenario):
         self.random_spawn = kwargs.pop("random_spawn", False)
         self.use_joints = kwargs.pop("use_joints", True)
 
-        self.state_representation = "all_states"
+        self.state_representation = "local_neighbors"
 
         ScenarioUtils.check_kwargs_consumed(kwargs)
 
@@ -418,9 +418,9 @@ class SalpDomain(BaseScenario):
     def observation(self, agent: Agent):
 
         match (self.state_representation):
-            case "neighbor":
+            case "local_neighbors":
                 return self.neighbors_representation(agent)
-            case "all_states":
+            case "all_neighbors":
                 return self.all_agents_representation(agent)
             case "single_state":
                 return self.single_agent_representation(agent)
