@@ -49,7 +49,7 @@ class SalpDomain(BaseScenario):
             random.shuffle(self.agents_idx)
 
         self._min_dist_between_entities = kwargs.pop("min_dist_between_entities", 0.1)
-        self._lidar_range = kwargs.pop("lidar_range", 0.35)
+        self._lidar_range = kwargs.pop("lidar_range", 10.0)
         self._covering_range = kwargs.pop("covering_range", 0.25)
 
         self._agents_per_target = kwargs.pop("agents_per_target", 1)
@@ -57,7 +57,7 @@ class SalpDomain(BaseScenario):
         self.random_spawn = kwargs.pop("random_spawn", False)
         self.use_joints = kwargs.pop("use_joints", True)
 
-        self.state_representation = "all_states"
+        self.state_representation = "neighbor"
 
         ScenarioUtils.check_kwargs_consumed(kwargs)
 
@@ -72,8 +72,10 @@ class SalpDomain(BaseScenario):
         self.agent_dist = 0.05
         self.u_multiplier = 2.0
 
-        self.gravity_x_val = sample_filtered_normal(mean=0.0, std_dev=0.25,threshold=0.1)
-        self.gravity_y_val = -0.4
+        self.gravity_x_val = sample_filtered_normal(
+            mean=0.0, std_dev=0.25, threshold=0.1
+        )
+        self.gravity_y_val = -0.3
         # Make world
         world = SalpWorld(
             batch_dim=batch_dim,
@@ -226,7 +228,9 @@ class SalpDomain(BaseScenario):
             covered_targets_dists == 0, float("inf"), covered_targets_dists
         )
 
-        clamped_covered_targets_dists = torch.clamp(masked_covered_targets_dists, min=1e-2)
+        clamped_covered_targets_dists = torch.clamp(
+            masked_covered_targets_dists, min=1e-2
+        )
 
         clamped_covered_targets_dists[torch.isinf(clamped_covered_targets_dists)] = 0
 
@@ -234,15 +238,20 @@ class SalpDomain(BaseScenario):
             self.covered_targets.squeeze(-1) / clamped_covered_targets_dists
         )
 
-        global_reward_spread *= self.targets_values / (self.n_agents * self.world.batch_dim)
+        global_reward_spread *= self.targets_values / (
+            self.n_agents * self.world.batch_dim
+        )
 
         global_reward_spread[torch.isnan(global_reward_spread)] = 0
         global_reward_spread[torch.isinf(global_reward_spread)] = 0
 
-        return torch.sum(torch.sum(
-            global_reward_spread,
+        return torch.sum(
+            torch.sum(
+                global_reward_spread,
+                dim=-1,
+            ),
             dim=-1,
-        ), dim=-1)
+        )
 
     def reward(self, agent: Agent):
         is_first = agent == self.world.agents[0]
@@ -286,53 +295,58 @@ class SalpDomain(BaseScenario):
                 neighbors.append(joint.entity_a)
 
         return neighbors
-    
+
     def neighbors_representation(self, agent: Agent):
-        # poi_sensors = agent.sensors[0].measure()[:, 4:]
+        poi_sensors = agent.sensors[0].measure()[:, 4:]
 
         neighbor_states = []
         for neighbor in agent.state.neighbors:
-            neighbor_states.extend([neighbor.state.pos, neighbor.state.vel, neighbor.state.rot])
+            neighbor_states.extend(
+                [neighbor.state.pos, neighbor.state.vel, neighbor.state.rot]
+            )
 
         # Add zeros to observation to keep size consistent
         if len(agent.state.neighbors) < 2:
             pos_vel = torch.ones(
-                (self.world.batch_dim, self.world.dim_p), device=self.world.device
+                (self.world.batch_dim, 3), device=self.world.device
             ) * torch.tensor([0.0, 0.0, 0.0], device=self.world.device)
 
             neighbor_states.extend([pos_vel, pos_vel])
-        
+
         dist_to_target = torch.abs(agent.state.pos - self._targets[0].state.pos)
 
         return torch.cat(
             [
-                dist_to_target,
-                torch.zeros_like(agent.state.vel),
+                poi_sensors,
                 torch.zeros_like(agent.state.rot),
                 agent.state.pos,
                 agent.state.vel,
                 agent.state.rot,
                 *neighbor_states,
-                
             ],
             dim=-1,
         )
-    
+
     def all_agents_representation(self, agent: Agent):
+
+        poi_sensors = agent.sensors[0].measure()[:, 4:]
 
         all_agents_states = []
 
         for idx in self.agents_idx:
             all_agents_states.extend(
-                [self.world.agents[idx].state.pos, self.world.agents[idx].state.vel, self.world.agents[idx].state.rot]
+                [
+                    self.world.agents[idx].state.pos,
+                    self.world.agents[idx].state.vel,
+                    self.world.agents[idx].state.rot,
+                ]
             )
 
         dist_to_target = torch.abs(agent.state.pos - self._targets[0].state.pos)
 
         return torch.cat(
             [
-                dist_to_target,
-                torch.zeros_like(agent.state.vel),
+                poi_sensors,
                 torch.zeros_like(agent.state.rot),
                 *all_agents_states,
             ],
@@ -355,7 +369,7 @@ class SalpDomain(BaseScenario):
 
     def observation(self, agent: Agent):
 
-        match(self.state_representation):
+        match (self.state_representation):
             case "neighbor":
                 return self.neighbors_representation(agent)
             case "all_states":

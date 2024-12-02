@@ -171,7 +171,7 @@ if __name__ == "__main__":
     map_size = env_config["map_size"]
 
     # Agent data
-    n_agents = 8
+    n_agents = 6
     agents_positions = [poi["position"]["coordinates"] for poi in env_config["agents"]]
     lidar_range = [rover["observation_radius"] for rover in env_config["agents"]]
 

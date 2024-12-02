@@ -169,7 +169,7 @@ class CooperativeCoevolutionaryAlgorithm:
 
             case PolicyEnum.MLP:
                 agent_nn = MLP_Policy(
-                    input_size=55,
+                    input_size=20,
                     hidden_layers=len(self.policy_hidden_layers),
                     hidden_size=self.policy_hidden_layers[0],
                     output_size=self.action_size,
@@ -233,9 +233,7 @@ class CooperativeCoevolutionaryAlgorithm:
 
         # Store joint states per environment for the first state
         agent_positions = torch.stack([agent.state.pos for agent in env.agents], dim=0)
-        joint_states_per_env = [
-            torch.empty((0, 2)).to(self.device) for _ in teams
-        ]
+        joint_states_per_env = [torch.empty((0, 2)).to(self.device) for _ in teams]
 
         tranposed_stacked_obs = (
             torch.stack(observations, -1).transpose(0, 1).transpose(0, -1)
@@ -263,7 +261,7 @@ class CooperativeCoevolutionaryAlgorithm:
             stacked_obs = torch.stack(observations, -1)
 
             actions = [
-                torch.empty((0,self.action_size)).to(self.device)
+                torch.empty((0, self.action_size)).to(self.device)
                 for _ in range(self.team_size)
             ]
 
