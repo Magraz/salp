@@ -71,9 +71,13 @@ class SalpDomain(BaseScenario):
         self.agent_dist = 0.05
         self.u_multiplier = 2.0
 
-        self.gravity_x_val = sample_filtered_normal(
-            mean=0.0, std_dev=0.4, threshold=0.2
-        )
+        # self.gravity_x_val = sample_filtered_normal(
+        #     mean=0.0, std_dev=0.3, threshold=0.2
+        # )
+
+        gravity_x_vals = [0.4, -0.4]
+
+        self.gravity_x_val = random.choice(gravity_x_vals)
         self.gravity_y_val = -0.3
         # Make world
         world = SalpWorld(
@@ -343,7 +347,7 @@ class SalpDomain(BaseScenario):
         ).unsqueeze(-1)
 
         # Add zeros to observation to keep size consistent
-        if len(agent.state.neighbors) < 2:
+        if len(agent.state.local_neighbors) < 2:
             pos_vel = torch.ones(
                 (self.world.batch_dim, 1), device=self.world.device
             ) * torch.tensor([0.0], device=self.world.device)
