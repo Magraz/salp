@@ -11,10 +11,15 @@ class CNN_Policy(nn.Module):  # inheriting from nn.Module!
     ):
         super(CNN_Policy, self).__init__()
 
-        self.cnn = nn.Conv1d(in_channels=1, out_channels=32, kernel_size=4, stride=4)
-        self.cnn2 = nn.Conv1d(in_channels=32, out_channels=64, kernel_size=4, stride=4)
+        dim1 = 24
+        dim2 = 48
+
+        self.cnn = nn.Conv1d(in_channels=1, out_channels=dim1, kernel_size=4, stride=2)
+        self.cnn2 = nn.Conv1d(
+            in_channels=dim1, out_channels=dim2, kernel_size=4, stride=2
+        )
         self.global_avg_pool = nn.AdaptiveAvgPool1d(output_size=1)
-        self.linear = nn.Linear(64, 1)
+        self.linear = nn.Linear(dim2, 1)
         self.num_params = nn.utils.parameters_to_vector(self.parameters()).size()[0]
 
         # Disable gradient calcs

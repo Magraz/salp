@@ -1,4 +1,5 @@
 ### To Install
+Project requires Python 3.12
 
 Run the following commands inside `src/vmas_salps` after cloning:
 1. `git submodule init`

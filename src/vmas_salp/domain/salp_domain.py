@@ -5,6 +5,7 @@ import typing
 from typing import Dict, List
 
 import torch
+import torch.nn.functional as F
 from torch import Tensor
 from typing import ValuesView
 from vmas import render_interactively
@@ -39,9 +40,7 @@ class SalpDomain(BaseScenario):
         self.targets_values = torch.tensor(
             kwargs.pop("targets_values", [1.0]), device=device
         )
-        self.agents_positions = kwargs.pop(
-            "agents_positions", [[-0.1, 0.0], [0.0, 0.0]]
-        )
+        self.agents_positions = kwargs.pop("agents_positions", [])
         self.agents_idx = [
             i for i, _ in enumerate(self.agents_positions[: self.n_agents])
         ]
@@ -73,7 +72,7 @@ class SalpDomain(BaseScenario):
         self.u_multiplier = 2.0
 
         self.gravity_x_val = sample_filtered_normal(
-            mean=0.0, std_dev=0.25, threshold=0.1
+            mean=0.0, std_dev=0.4, threshold=0.2
         )
         self.gravity_y_val = -0.3
         # Make world
@@ -121,6 +120,7 @@ class SalpDomain(BaseScenario):
                 u_multiplier=self.u_multiplier,
             )
             agent.state.join = torch.zeros(batch_dim)
+            agent.state.idx = self.agents_idx[i]
             world.add_agent(agent)
 
         # Add joints
@@ -143,7 +143,8 @@ class SalpDomain(BaseScenario):
 
         # Assign neighbors to agents
         for agent in world.agents:
-            agent.state.neighbors = self.get_neighbors(agent, world.joints)
+            agent.state.local_neighbors = self.get_local_neighbors(agent, world.joints)
+            agent.state.all_neighbors = self.get_all_neighbors(agent, world.agents)
 
         self.dist_rew = torch.zeros(batch_dim, device=device)
         self.rot_rew = self.dist_rew.clone()
@@ -274,7 +275,7 @@ class SalpDomain(BaseScenario):
 
         return covering_rew
 
-    def get_neighbors(self, agent: Agent, joints: ValuesView):
+    def get_local_neighbors(self, agent: Agent, joints: ValuesView):
         neighbors = []
         links = []
 
@@ -296,26 +297,65 @@ class SalpDomain(BaseScenario):
 
         return neighbors
 
+    def get_all_neighbors(self, agent, all_agents):
+        l_neighbors = []
+        r_neighbors = []
+        neighbors = []
+
+        for a in all_agents:
+            if a != agent:
+                if agent.state.idx < a.state.idx:
+                    r_neighbors.append(a)
+                else:
+                    l_neighbors.append(a)
+
+        neighbors.extend(l_neighbors)
+        neighbors.extend(r_neighbors)
+
+        return neighbors
+
+    def get_heading(self, agent: Agent):
+        x = torch.cos(agent.state.rot + 1.5 * torch.pi).squeeze(-1)
+        y = torch.sin(agent.state.rot + 1.5 * torch.pi).squeeze(-1)
+
+        return torch.stack((x, y), dim=-1)
+
     def neighbors_representation(self, agent: Agent):
-        poi_sensors = agent.sensors[0].measure()[:, 4:]
 
         neighbor_states = []
-        for neighbor in agent.state.neighbors:
-            neighbor_states.extend([neighbor.state.pos, neighbor.state.vel])
+
+        for neighbor in agent.state.local_neighbors:
+            norm_force = torch.linalg.norm(
+                F.normalize(neighbor.state.force), dim=-1
+            ).unsqueeze(-1)
+            neighbor_states.extend([norm_force, neighbor.state.rot])
+
+        # Calculate heading and distance to target
+        heading = self.get_heading(agent)
+
+        dist_to_target = agent.state.pos - self._targets[0].state.pos
+        norm_dist = torch.linalg.norm(dist_to_target, dim=-1).unsqueeze(-1)
+
+        normalized_dist_to_target = F.normalize(dist_to_target)
+
+        heading_difference = torch.sum(
+            heading * normalized_dist_to_target, dim=1
+        ).unsqueeze(-1)
 
         # Add zeros to observation to keep size consistent
         if len(agent.state.neighbors) < 2:
             pos_vel = torch.ones(
-                (self.world.batch_dim, 2), device=self.world.device
-            ) * torch.tensor([0.0, 0.0], device=self.world.device)
+                (self.world.batch_dim, 1), device=self.world.device
+            ) * torch.tensor([0.0], device=self.world.device)
 
             neighbor_states.extend([pos_vel, pos_vel])
 
         return torch.cat(
             [
-                poi_sensors,
-                agent.state.pos,
-                agent.state.vel,
+                norm_dist,
+                heading_difference,
+                torch.linalg.norm(F.normalize(agent.state.force), dim=-1).unsqueeze(-1),
+                agent.state.rot,
                 *neighbor_states,
             ],
             dim=-1,
@@ -323,22 +363,40 @@ class SalpDomain(BaseScenario):
 
     def all_agents_representation(self, agent: Agent):
 
-        poi_sensors = agent.sensors[0].measure()[:, 4:]
+        # Calculate heading and distance to target
 
-        all_agents_states = []
+        heading = self.get_heading(agent)
 
-        for idx in self.agents_idx:
-            all_agents_states.extend(
+        dist_to_target = agent.state.pos - self._targets[0].state.pos
+        norm_dist = torch.linalg.norm(dist_to_target, dim=-1).unsqueeze(-1)
+
+        normalized_dist_to_target = F.normalize(dist_to_target)
+
+        heading_difference = torch.sum(
+            heading * normalized_dist_to_target, dim=1
+        ).unsqueeze(-1)
+
+        # Get all neighbors statesw
+        all_neighbors_states = []
+
+        for neighbor in agent.state.all_neighbors:
+            norm_force = torch.linalg.norm(
+                F.normalize(neighbor.state.force), dim=-1
+            ).unsqueeze(-1)
+            all_neighbors_states.extend(
                 [
-                    self.world.agents[idx].state.pos,
-                    self.world.agents[idx].state.vel,
+                    norm_force,
+                    neighbor.state.rot,
                 ]
             )
 
         return torch.cat(
             [
-                poi_sensors,
-                *all_agents_states,
+                norm_dist,
+                heading_difference,
+                torch.linalg.norm(F.normalize(agent.state.force), dim=-1).unsqueeze(-1),
+                agent.state.rot,
+                *all_neighbors_states,
             ],
             dim=-1,
         )
