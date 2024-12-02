@@ -41,17 +41,17 @@ agents:
       spawn_rule: fixed
       coordinates: [0.1, 0.0]
   
-  - observation_radius: 4.0
-    color: "MAGENTA"
-    position:
-      spawn_rule: fixed
-      coordinates: [0.15, 0.0]
+  # - observation_radius: 4.0
+  #   color: "MAGENTA"
+  #   position:
+  #     spawn_rule: fixed
+  #     coordinates: [0.15, 0.0]
   
-  - observation_radius: 4.0
-    color: "ORANGE"
-    position:
-      spawn_rule: fixed
-      coordinates: [0.3, 0.0]
+  # - observation_radius: 4.0
+  #   color: "ORANGE"
+  #   position:
+  #     spawn_rule: fixed
+  #     coordinates: [0.3, 0.0]
   
   # - observation_radius: 4.0
   #   color: "RED"
@@ -74,7 +74,7 @@ targets:
     order: 0
     position:
       spawn_rule: fixed
-      coordinates: [0.0, 2.0]
+      coordinates: [0.0, 1.0]
   
   # - value: 1.0
   #   coupling: 4
