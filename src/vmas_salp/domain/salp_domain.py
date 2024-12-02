@@ -57,7 +57,7 @@ class SalpDomain(BaseScenario):
         self.random_spawn = kwargs.pop("random_spawn", False)
         self.use_joints = kwargs.pop("use_joints", True)
 
-        self.state_representation = "neighbor"
+        self.state_representation = "all_states"
 
         ScenarioUtils.check_kwargs_consumed(kwargs)
 
@@ -301,27 +301,21 @@ class SalpDomain(BaseScenario):
 
         neighbor_states = []
         for neighbor in agent.state.neighbors:
-            neighbor_states.extend(
-                [neighbor.state.pos, neighbor.state.vel, neighbor.state.rot]
-            )
+            neighbor_states.extend([neighbor.state.pos, neighbor.state.vel])
 
         # Add zeros to observation to keep size consistent
         if len(agent.state.neighbors) < 2:
             pos_vel = torch.ones(
-                (self.world.batch_dim, 3), device=self.world.device
-            ) * torch.tensor([0.0, 0.0, 0.0], device=self.world.device)
+                (self.world.batch_dim, 2), device=self.world.device
+            ) * torch.tensor([0.0, 0.0], device=self.world.device)
 
             neighbor_states.extend([pos_vel, pos_vel])
-
-        dist_to_target = torch.abs(agent.state.pos - self._targets[0].state.pos)
 
         return torch.cat(
             [
                 poi_sensors,
-                torch.zeros_like(agent.state.rot),
                 agent.state.pos,
                 agent.state.vel,
-                agent.state.rot,
                 *neighbor_states,
             ],
             dim=-1,
@@ -338,16 +332,12 @@ class SalpDomain(BaseScenario):
                 [
                     self.world.agents[idx].state.pos,
                     self.world.agents[idx].state.vel,
-                    self.world.agents[idx].state.rot,
                 ]
             )
-
-        dist_to_target = torch.abs(agent.state.pos - self._targets[0].state.pos)
 
         return torch.cat(
             [
                 poi_sensors,
-                torch.zeros_like(agent.state.rot),
                 *all_agents_states,
             ],
             dim=-1,

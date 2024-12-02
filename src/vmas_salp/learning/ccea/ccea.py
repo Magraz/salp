@@ -169,7 +169,7 @@ class CooperativeCoevolutionaryAlgorithm:
 
             case PolicyEnum.MLP:
                 agent_nn = MLP_Policy(
-                    input_size=20,
+                    input_size=16,
                     hidden_layers=len(self.policy_hidden_layers),
                     hidden_size=self.policy_hidden_layers[0],
                     output_size=self.action_size,
