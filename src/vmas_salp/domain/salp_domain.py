@@ -390,11 +390,11 @@ class SalpDomain(BaseScenario):
 
         left_norm_force = torch.linalg.norm(
                 left_neighbors_total_force, dim=-1
-            ).unsqueeze(-1)
+            ).unsqueeze(-1) / ((self.n_agents-1) * self.u_multiplier)
 
         right_norm_force = torch.linalg.norm(
                 right_neighbors_total_force, dim=-1
-            ).unsqueeze(-1)
+            ).unsqueeze(-1) / ((self.n_agents-1) * self.u_multiplier)
 
         return torch.cat(
             [
