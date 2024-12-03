@@ -239,6 +239,7 @@ class PPO:
 
             # Take a step in the env with the just computed actions
             obs, rewards, dones, infos = self.env.step(temp_acts)
+            # TODO: Add in dones when num_timesteps is finished
 
 
             # After getting all the agent's stuff, add to the real buffers
@@ -398,7 +399,7 @@ class PPO:
             # If the KL is too high for the current agent, move on to the next agent
             if not continue_training:
                 break
-        return pg_losses, value_losses, entropy_losses
+        return pg_losses, value_losses, entropy_losses, self.rewards
         
 
     
@@ -411,7 +412,7 @@ class PPO:
         # Add members for all the stuff PPO needs
         self.init_learning()
         self.last_obs = self.env.reset()
-
+        rew = []
         # Train for total_timesteps iterations
         for i in tqdm(range(self.total_timesteps)):
             # Collect data with current policy
@@ -421,9 +422,11 @@ class PPO:
                 break
 
             # Train on the data just collected
-            pg_losses, value_losses, entropy_losses = self.train()
+            pg_losses, value_losses, entropy_losses, rewards = self.train()
+            # Save in some way or plot
+            rew.append(rewards)
         
-        return self.joint_policies
+        return self.joint_policies, rew
 
 
     # def run(self):
