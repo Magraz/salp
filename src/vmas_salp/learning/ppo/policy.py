@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torch.distributions.normal import Normal
 import torch.optim as optim
+import torch.nn.functional as F
 
 import numpy as np
 
@@ -57,7 +58,7 @@ class Agent(nn.Module):
         if action is None:
             action = probs.sample()
         return (
-            action,
+            F.sigmoid(action),
             probs.log_prob(action).sum(-1),
             probs.entropy().sum(-1),
             self.critic(x),
