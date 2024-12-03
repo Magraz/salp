@@ -115,7 +115,7 @@ class CooperativeCoevolutionaryAlgorithm:
             kwargs.pop("team_size", 0) if self.use_teaming else self.n_agents
         )
         self.team_combinations = [
-            combo for combo in combinations(range(self.n_agents), self.team_size)
+            list(combo) for combo in combinations(range(self.n_agents), self.team_size)
         ]
 
         self.std_dev_list = np.arange(

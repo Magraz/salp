@@ -93,14 +93,16 @@ def use_vmas_env(
 
             G = torch.stack([g[:n_envs] for g in rews], dim=0)
 
-            if any(tensor.any() for tensor in rews):
-                print("G")
-                print(G)
+            print(obs)
 
-                # print("Total G")
-                # print(G_total)
+            # if any(tensor.any() for tensor in rews):
+            #     print("G")
+            #     print(G)
 
-                pass
+            #     # print("Total G")
+            #     # print(G_total)
+
+            #     pass
 
             if render:
                 frame = env.render(
@@ -177,7 +179,7 @@ if __name__ == "__main__":
 
     # POIs data
     poi_positions = [poi["position"]["coordinates"] for poi in env_config["targets"]]
-    n_envs = 3
+    n_envs = 1
 
     use_vmas_env(
         name=f"{args["batch"]}_{n_agents}a",
@@ -193,7 +195,7 @@ if __name__ == "__main__":
         save_render=False,
         device="cpu",
         n_envs=n_envs,
-        n_steps=1000,
+        n_steps=100,
         # kwargs
         n_agents=n_agents,
         targets_positions=poi_positions,

@@ -20,6 +20,7 @@ from vmas_salp.domain.controller import SalpController
 from vmas_salp.domain.sensors import SectorDensity
 from vmas_salp.domain.utils import COLOR_MAP, sample_filtered_normal
 import random
+import math
 
 if typing.TYPE_CHECKING:
     from vmas.simulator.rendering import Geom
@@ -35,7 +36,9 @@ class SalpDomain(BaseScenario):
         self.n_agents = kwargs.pop("n_agents", 2)
         self.agents_colors = kwargs.pop("agents_colors", ["BLUE"])
         self.n_targets = kwargs.pop("n_targets", 1)
+
         self.targets_positions = kwargs.pop("targets_positions", [[0.0, 3.0]])
+
         self.targets_colors = kwargs.pop("targets_colors", ["RED"])
         self.targets_values = torch.tensor(
             kwargs.pop("targets_values", [1.0]), device=device
@@ -89,10 +92,10 @@ class SalpDomain(BaseScenario):
             collision_force=1500,
             joint_force=900,
             torque_constraint_force=1.5,
-            gravity=(
-                self.gravity_x_val,
-                self.gravity_y_val,
-            ),
+            # gravity=(
+            #     self.gravity_x_val,
+            #     self.gravity_y_val,
+            # ),
         )
 
         # Set targets
@@ -148,7 +151,7 @@ class SalpDomain(BaseScenario):
         # Assign neighbors to agents
         for agent in world.agents:
             agent.state.local_neighbors = self.get_local_neighbors(agent, world.joints)
-            agent.state.all_neighbors = self.get_all_neighbors(agent, world.agents)
+            agent.state.left_neighbors, agent.state.right_neighbors = self.get_all_neighbors(agent, world.agents)
 
         self.dist_rew = torch.zeros(batch_dim, device=device)
         self.rot_rew = self.dist_rew.clone()
@@ -304,7 +307,6 @@ class SalpDomain(BaseScenario):
     def get_all_neighbors(self, agent, all_agents):
         l_neighbors = []
         r_neighbors = []
-        neighbors = []
 
         for a in all_agents:
             if a != agent:
@@ -313,10 +315,7 @@ class SalpDomain(BaseScenario):
                 else:
                     l_neighbors.append(a)
 
-        neighbors.extend(l_neighbors)
-        neighbors.extend(r_neighbors)
-
-        return neighbors
+        return l_neighbors, r_neighbors
 
     def get_heading(self, agent: Agent):
         x = torch.cos(agent.state.rot + 1.5 * torch.pi).squeeze(-1)
@@ -365,6 +364,49 @@ class SalpDomain(BaseScenario):
             dim=-1,
         )
 
+    def aggregate_local_neighbors(self, agent: Agent):
+        # Calculate heading and distance to target
+
+        heading = self.get_heading(agent)
+
+        dist_to_target = agent.state.pos - self._targets[0].state.pos
+        norm_dist = torch.linalg.norm(dist_to_target, dim=-1).unsqueeze(-1)
+
+        normalized_dist_to_target = F.normalize(dist_to_target)
+
+        heading_difference = torch.sum(
+            heading * normalized_dist_to_target, dim=1
+        ).unsqueeze(-1)
+
+        # Get all neighbors statesw
+        left_neighbors_total_force = torch.zeros_like(agent.state.force)
+        right_neighbors_total_force = torch.zeros_like(agent.state.force)
+
+        for l_neighbor in agent.state.left_neighbors:
+            left_neighbors_total_force += l_neighbor.state.force
+        
+        for r_neighbor in agent.state.right_neighbors:
+            right_neighbors_total_force += r_neighbor.state.force
+
+        left_norm_force = torch.linalg.norm(
+                left_neighbors_total_force, dim=-1
+            ).unsqueeze(-1)
+
+        right_norm_force = torch.linalg.norm(
+                right_neighbors_total_force, dim=-1
+            ).unsqueeze(-1)
+
+        return torch.cat(
+            [
+                norm_dist,
+                heading_difference,
+                agent.state.rot,
+                left_norm_force,
+                right_norm_force,
+            ],
+            dim=-1,
+        )
+    
     def all_agents_representation(self, agent: Agent):
 
         # Calculate heading and distance to target
@@ -423,7 +465,7 @@ class SalpDomain(BaseScenario):
 
         match (self.state_representation):
             case "local_neighbors":
-                return self.neighbors_representation(agent)
+                return self.aggregate_local_neighbors(agent)
             case "all_neighbors":
                 return self.all_agents_representation(agent)
             case "single_state":
@@ -448,6 +490,29 @@ class SalpDomain(BaseScenario):
             geoms.append(range_circle)
 
         return geoms
+
+    def random_point_around_center(center_x, center_y, radius):
+        """
+        Generates a random (x, y) coordinate around a given circle center within the specified radius.
+        
+        Parameters:
+            center_x (float): The x-coordinate of the circle center.
+            center_y (float): The y-coordinate of the circle center.
+            radius (float): The radius around the center where the point will be generated.
+        
+        Returns:
+            tuple: A tuple (x, y) representing the random point.
+        """
+        # Generate a random angle in radians
+        angle = random.uniform(0, 2 * math.pi)
+        # Generate a random distance from the center, within the circle
+        distance = random.uniform(0, radius)
+        
+        # Calculate the x and y coordinates
+        random_x = center_x + distance * math.cos(angle)
+        random_y = center_y + distance * math.sin(angle)
+        
+        return [random_x, random_y]
 
 
 if __name__ == "__main__":

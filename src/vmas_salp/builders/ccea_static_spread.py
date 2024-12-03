@@ -18,7 +18,7 @@ from dataclasses import asdict
 BATCH = "static_spread"
 
 # DEFAULTS
-N_STEPS = 200
+N_STEPS = 100
 N_GENS = 5000
 SUBPOP_SIZE = 100
 N_GENS_BETWEEN_SAVE = 20

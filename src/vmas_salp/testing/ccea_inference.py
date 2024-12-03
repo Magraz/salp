@@ -11,9 +11,11 @@ from vmas_salp.learning.ccea.ccea import CooperativeCoevolutionaryAlgorithm
 from vmas_salp.learning.dataclasses import ExperimentConfig, EnvironmentConfig
 from vmas_salp.domain.create_env import create_env
 from dataclasses import asdict
+import random
+from copy import deepcopy
 
 batch_name = "static_spread"
-experiment_name = "g_mlp"
+experiment_name = "g_cnn"
 trial_id = 0
 checkpoint_path = f"./src/vmas_salp/testing/checkpoint.pickle"
 batch_dir = f"./src/vmas_salp/experiments/yamls/{batch_name}"
@@ -55,11 +57,21 @@ ccea = CooperativeCoevolutionaryAlgorithm(
 )
 
 agents_trained = 6
-one_shot_up_to = 12
+one_shot_up_to = 7
 rewards = []
 
 for n_agents in range(agents_trained, one_shot_up_to + 1):
 
+    extended_team = deepcopy(best_team)
+    extended_team.combination = list(extended_team.combination)
+
+    ccea.team_size = n_agents
+
+    for i in range(n_agents-agents_trained):
+        extended_team.combination.append(n_agents-1)
+        extended_team.individuals.append(random.choice(best_team.individuals)) 
+
+    ccea.video_name = f"{ccea.video_name}_{n_agents}"
     eval_infos = ccea.evaluateTeams(
         create_env(
             batch_dir=batch_dir,
@@ -69,11 +81,12 @@ for n_agents in range(agents_trained, one_shot_up_to + 1):
             viewer_zoom=1.8,
             benchmark=False,
         ),
-        [best_team],
-        render=False,
-        save_render=False,
+        [extended_team],
+        render=True,
+        save_render=True,
     )
 
-    rewards.append(eval_infos[0].team_fitness)
+    ccea.observation_size += 2
 
-print(rewards)
+    rewards.append(eval_infos[0].team_fitness)
+    print(rewards)

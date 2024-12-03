@@ -1,6 +1,6 @@
 
 map_size: [3.0, 3.0]
-obs_space_dim: 8
+obs_space_dim: 5
 action_space_dim: 1
 shuffle_agents_positions: true
 
@@ -9,37 +9,37 @@ agents:
     color: "GREEN"
     position:
       spawn_rule: fixed
-      coordinates: [-0.15, 0.0]
+      coordinates: [-0.15, -0.5]
   
   - observation_radius: 4.0
     color: "BLACK"
     position:
       spawn_rule: fixed
-      coordinates: [-0.1, 0.0]
+      coordinates: [-0.1, -0.5]
   
   - observation_radius: 4.0
     color: "BLUE"
     position:
       spawn_rule: fixed
-      coordinates: [-0.05, 0.0]
+      coordinates: [-0.05, -0.5]
   
   - observation_radius: 4.0
     color: "WHITE"
     position:
       spawn_rule: fixed
-      coordinates: [0.0, 0.0]
+      coordinates: [0.0, -0.5]
   
   - observation_radius: 4.0
     color: "GRAY"
     position:
       spawn_rule: fixed
-      coordinates: [0.05, 0.0]
+      coordinates: [0.05, -0.5]
   
   - observation_radius: 4.0
     color: "LIGHT_GREEN"
     position:
       spawn_rule: fixed
-      coordinates: [0.1, 0.0]
+      coordinates: [0.1, -0.5]
   
   # - observation_radius: 4.0
   #   color: "MAGENTA"
@@ -74,7 +74,7 @@ targets:
     order: 0
     position:
       spawn_rule: fixed
-      coordinates: [0.0, 1.0]
+      coordinates: [1.5, 1.0]
   
   # - value: 1.0
   #   coupling: 4
