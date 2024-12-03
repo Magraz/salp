@@ -11,12 +11,15 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     torch.nn.init.constant_(layer.bias, bias_const)
     return layer
 
-dev = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
 class Agent(nn.Module):
     def __init__(self, observation_size, action_size, lr):
         super().__init__()
         self.critic = nn.Sequential(
-            layer_init(nn.Linear(np.array((observation_size)).prod(), 64)),
+            layer_init(nn.Linear(observation_size, 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, 64)),
             nn.Tanh(),
@@ -24,14 +27,14 @@ class Agent(nn.Module):
         )
         self.critic.to(dev)
         self.actor_mean = nn.Sequential(
-            layer_init(nn.Linear(np.array((observation_size)).prod(), 64)),
+            layer_init(nn.Linear(observation_size, 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, 64)),
             nn.Tanh(),
-            layer_init(nn.Linear(64, np.prod((action_size))), std=0.01),
+            layer_init(nn.Linear(64, action_size), std=0.01),
         )
         self.actor_mean.to(dev)
-        self.actor_logstd = nn.Parameter(torch.zeros(1, np.prod((action_size)))).to(dev)
+        self.actor_logstd = nn.Parameter(torch.zeros(1, action_size)).to(dev)
 
         self.optimizer = optim.Adam(self.parameters(), lr=lr, eps=1e-5)
 
