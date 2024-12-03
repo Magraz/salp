@@ -6,8 +6,7 @@ from torch.nn import functional as F
 
 import random
 
-# from vmas.simulator.environment import Environment
-# from vmas.simulator.utils import save_video
+from vmas.simulator.utils import save_video
 
 from vmas_salp.domain.create_env import create_env
 from vmas_salp.learning.ppo.policy import Agent
@@ -80,12 +79,14 @@ class PPO:
         self.total_timesteps = 1000000
         self.learning_rate = 3e-4
         self.num_envs = 1
-        self.num_steps = 32 # 2048 # Noah: I am taking this as the number of steps in rollout
+        self.num_steps = (
+            50  # 2048 # Noah: I am taking this as the number of steps in rollout
+        )
         self.episodes = 1000
         self.anneal_lr = True
         self.gamma = 0.99
         self.gae_lambda = 0.95
-        self.num_minibatches = 4 #32
+        self.num_minibatches = 4  # 32
         self.update_epochs = 10
         self.norm_adv = True
         self.clip_coef = 0.2
@@ -121,7 +122,7 @@ class PPO:
             )
 
         return teams
-    
+
     def seed_PPO(self):
         # TRY NOT TO MODIFY: seeding
         random.seed(self.seed)
@@ -131,12 +132,26 @@ class PPO:
 
     def reset_buffers(self):
         # ALGO Logic: Storage setup
-        self.obs = torch.zeros((self.n_agents, self.num_envs, self.num_steps, self.observation_size), device=self.device)
-        self.actions = torch.zeros((self.n_agents, self.num_envs, self.num_steps, self.action_size), device=self.device)
-        self.logprobs = torch.zeros((self.n_agents, self.num_envs, self.num_steps), device=self.device)
-        self.rewards = torch.zeros((self.n_agents, self.num_envs, self.num_steps), device=self.device)
-        self.dones = torch.zeros((self.n_agents, self.num_envs, self.num_steps), device=self.device)
-        self.values = torch.zeros((self.n_agents, self.num_envs, self.num_steps), device=self.device)
+        self.obs = torch.zeros(
+            (self.n_agents, self.num_envs, self.num_steps, self.observation_size),
+            device=self.device,
+        )
+        self.actions = torch.zeros(
+            (self.n_agents, self.num_envs, self.num_steps, self.action_size),
+            device=self.device,
+        )
+        self.logprobs = torch.zeros(
+            (self.n_agents, self.num_envs, self.num_steps), device=self.device
+        )
+        self.rewards = torch.zeros(
+            (self.n_agents, self.num_envs, self.num_steps), device=self.device
+        )
+        self.dones = torch.zeros(
+            (self.n_agents, self.num_envs, self.num_steps), device=self.device
+        )
+        self.values = torch.zeros(
+            (self.n_agents, self.num_envs, self.num_steps), device=self.device
+        )
 
     def init_learning(self):
         # Create environment
@@ -148,10 +163,9 @@ class PPO:
         )
 
         self.joint_policies = [
-                                Agent(self.observation_size, self.action_size, lr=self.learning_rate)
-                                for _ in range(self.team_size)
-                              ]
-        
+            Agent(self.observation_size, self.action_size, lr=self.learning_rate)
+            for _ in range(self.team_size)
+        ]
 
         # Initialize buffers to empty
         self.reset_buffers()
@@ -170,17 +184,21 @@ class PPO:
                 a.actor_mean.train()
 
     def calculate_returns_and_advantage(self, last_values, dones):
-        '''
+        """
         Calculate the returns and advantages from the just collected rollout data
         See the calculate_returns_and_advantage method under RolloutBuffer in https://github.com/DLR-RM/stable-baselines3/blob/master/stable_baselines3/common/buffers.py
-        '''
-        self.returns = torch.zeros((self.n_agents, self.num_envs, self.num_steps), device=self.device)
-        self.advantages = torch.zeros((self.n_agents, self.num_envs, self.num_steps), device=self.device)
+        """
+        self.returns = torch.zeros(
+            (self.n_agents, self.num_envs, self.num_steps), device=self.device
+        )
+        self.advantages = torch.zeros(
+            (self.n_agents, self.num_envs, self.num_steps), device=self.device
+        )
 
         # For each agent
         # for i in range(self.n_agents):
         last_gae_lam = 0
-        # Go through the buffer for the current agent 
+        # Go through the buffer for the current agent
         # and calculate the returns and advantages for just that agent
         # TODO: May need to reduce the dimensions of dones, rewards, and values
         for k in reversed(range(self.num_steps)):
@@ -192,41 +210,113 @@ class PPO:
                 next_values = self.values[:, :, k + 1]
 
             # Calculate TD error
-            delta = self.rewards[:, :, k] + self.gamma * next_values * next_non_terminal - self.values[:, :, k]
+            delta = (
+                self.rewards[:, :, k]
+                + self.gamma * next_values * next_non_terminal
+                - self.values[:, :, k]
+            )
             # Calculate GAE Lambda
-            last_gae_lam = delta + self.gamma * self.gae_lambda * next_non_terminal * last_gae_lam
+            last_gae_lam = (
+                delta + self.gamma * self.gae_lambda * next_non_terminal * last_gae_lam
+            )
             # Calculate GAE
             q = self.advantages[:, :, k]
             qq = last_gae_lam
             self.advantages[:, :, k] = last_gae_lam
         # Calculate returns for current agent
         self.returns = self.advantages + self.values
-        q = ''
+        q = ""
 
-    def collect_rollouts(self):
-        '''
-        Add data to the data buffers
-        See the collect_rollouts method in https://github.com/DLR-RM/stable-baselines3/blob/master/stable_baselines3/common/on_policy_algorithm.py#L21
-        '''
+    def evaluate(self, render=True, save_render=True):
+        # Seed probabilities
+        self.seed_PPO()
+        # Add members for all the stuff PPO needs
+        self.init_learning()
+        self.last_obs = self.env.reset()
+
         # Set all models to eval
         self.set_model_modes(True)
         # Reset Buffers
         self.reset_buffers()
 
-        # Do rollout for num_steps for every agents        
+        frame_list = []
+        rew = 0
+
+        # Do rollout for num_steps for every agents
         for i in range(self.num_steps):
             with torch.no_grad():
-                temp_acts = torch.zeros((self.n_agents, self.num_envs, self.action_size))
+                temp_acts = torch.zeros(
+                    (self.n_agents, self.num_envs, self.action_size)
+                )
                 temp_vals = torch.zeros((self.n_agents, self.num_envs))
                 temp_log_probs = torch.zeros((self.n_agents, self.num_envs))
                 # For each policy, get the action, value, and lob probability
                 for j, agent in enumerate(self.joint_policies):
-                    action, log_prob, _, value = agent.get_action_and_value(self.last_obs[j])
+                    action, log_prob, _, value = agent.get_action_and_value(
+                        self.last_obs[j]
+                    )
                     t = action.cpu().data.numpy()
                     if action > 1:
-                        action = torch.tensor([[1.]], device=self.device)
+                        action = torch.tensor([[1.0]], device=self.device)
                     elif action < -1:
-                        action = torch.tensor([[-1.]], device=self.device)
+                        action = torch.tensor([[-1.0]], device=self.device)
+
+                    temp_acts[j] = action
+                    temp_vals[j] = value
+                    temp_log_probs[j] = log_prob
+
+            # Take a step in the env with the just computed actions
+            obs, rewards, dones, infos = self.env.step(temp_acts)
+
+            rew = rewards[0]
+
+            # Update the last observation for the next iteration
+            self.last_obs = obs
+
+            # Visualization
+            if render:
+                frame = self.env.render(
+                    mode="rgb_array",
+                    agent_index_focus=None,  # Can give the camera an agent index to focus on
+                    visualize_when_rgb=True,
+                )
+                if save_render:
+                    frame_list.append(frame)
+
+        # Save video
+        if render and save_render:
+            save_video(self.video_name, frame_list, fps=1 / self.env.scenario.world.dt)
+
+        return rew
+
+    def collect_rollouts(self):
+        """
+        Add data to the data buffers
+        See the collect_rollouts method in https://github.com/DLR-RM/stable-baselines3/blob/master/stable_baselines3/common/on_policy_algorithm.py#L21
+        """
+        # Set all models to eval
+        self.set_model_modes(True)
+        # Reset Buffers
+        self.reset_buffers()
+
+        # Do rollout for num_steps for every agents
+        for i in range(self.num_steps):
+            with torch.no_grad():
+                temp_acts = torch.zeros(
+                    (self.n_agents, self.num_envs, self.action_size)
+                )
+                temp_vals = torch.zeros((self.n_agents, self.num_envs))
+                temp_log_probs = torch.zeros((self.n_agents, self.num_envs))
+                # For each policy, get the action, value, and lob probability
+                for j, agent in enumerate(self.joint_policies):
+                    action, log_prob, _, value = agent.get_action_and_value(
+                        self.last_obs[j]
+                    )
+                    t = action.cpu().data.numpy()
+                    if action > 1:
+                        action = torch.tensor([[1.0]], device=self.device)
+                    elif action < -1:
+                        action = torch.tensor([[-1.0]], device=self.device)
 
                     temp_acts[j] = action
                     temp_vals[j] = value
@@ -235,12 +325,9 @@ class PPO:
                     # temp_vals.append(value.cpu())
                     # temp_log_probs.append(log_prob.cpu())
 
-            
-
             # Take a step in the env with the just computed actions
             obs, rewards, dones, infos = self.env.step(temp_acts)
             # TODO: Add in dones when num_timesteps is finished
-
 
             # After getting all the agent's stuff, add to the real buffers
             self.obs[:, :, i] = torch.stack(self.last_obs)
@@ -257,13 +344,14 @@ class PPO:
             # self.dones.append(dones)
             # self.values.append(temp_vals)
             # self.logprobs.append(temp_log_probs)
-            
 
             # Update the last observation for the next iteration
             self.last_obs = obs
 
         with torch.no_grad():
-            temp_final_val = torch.zeros((self.n_agents, self.num_envs), device=self.device)
+            temp_final_val = torch.zeros(
+                (self.n_agents, self.num_envs), device=self.device
+            )
             # Get the value of the last obs so we can compute returns and advantage
             for k, agent in enumerate(self.joint_policies):
                 temp_final_val[k] = agent.get_value(obs[k])
@@ -272,13 +360,11 @@ class PPO:
 
         return True
 
-
-
     def train(self):
-        '''
+        """
         Using data from the buffers, update each policy
         See the train method in https://github.com/DLR-RM/stable-baselines3/blob/master/stable_baselines3/ppo/ppo.py
-        '''
+        """
         # Set models to train
         self.set_model_modes(False)
 
@@ -312,7 +398,9 @@ class PPO:
                 values = []
                 for ii, agent in enumerate(self.joint_policies):
                     t = obs[ii]
-                    _, cur_log_probs, cur_entropy, cur_values = agent.get_action_and_value(obs[ii], actions[ii]) 
+                    _, cur_log_probs, cur_entropy, cur_values = (
+                        agent.get_action_and_value(obs[ii], actions[ii])
+                    )
                     log_probs.append(cur_log_probs)
                     entropy.append(cur_entropy)
                     values.append(cur_values.squeeze(-1))
@@ -327,7 +415,9 @@ class PPO:
                 advantages = self.advantages[:, :, indices[start_index:stop_index]]
 
                 if self.norm_adv and len(advantages) > 1:
-                    advantages = (advantages - torch.mean(advantages)) / (torch.std(advantages) + 1e-8)
+                    advantages = (advantages - torch.mean(advantages)) / (
+                        torch.std(advantages) + 1e-8
+                    )
 
                 old_log_probs = self.logprobs[:, :, indices[start_index:stop_index]]
 
@@ -337,7 +427,9 @@ class PPO:
 
                 # Calculate the clipped surrogate loss for each agent
                 policy_loss_1 = advantages * ratio
-                policy_loss_2 = advantages * torch.clamp(ratio, 1 - self.clip_coef, 1 + self.clip_coef)
+                policy_loss_2 = advantages * torch.clamp(
+                    ratio, 1 - self.clip_coef, 1 + self.clip_coef
+                )
                 # Should be size num_agents x 1 (mean over the batch dimension)
                 policy_loss = -torch.min(policy_loss_1, policy_loss_2).mean(dim=-1)
 
@@ -351,12 +443,14 @@ class PPO:
                 if self.clip_vloss is None:
                     values_pred = values
                 else:
-                    values_pred = old_values + torch.clamp(values - old_values, -self.clip_vloss, self.clip_vloss)
+                    values_pred = old_values + torch.clamp(
+                        values - old_values, -self.clip_vloss, self.clip_vloss
+                    )
 
                 # Grab the returns for the current agent
                 returns = self.returns[:, :, indices[start_index:stop_index]]
                 # Should be size num_agents x 1
-                value_loss = F.mse_loss(returns, values_pred, reduction='none')
+                value_loss = F.mse_loss(returns, values_pred, reduction="none")
                 value_loss = torch.mean(value_loss, dim=-1)
                 # Keep track of for logging purposes
                 value_losses.append(value_loss)
@@ -370,19 +464,30 @@ class PPO:
                 entropy_losses.append(entropy_loss)
 
                 # Get the total loss. Should be size (num_agents x 1)
-                loss = policy_loss + self.ent_coef * entropy_loss + self.vf_coef * value_loss
+                loss = (
+                    policy_loss
+                    + self.ent_coef * entropy_loss
+                    + self.vf_coef * value_loss
+                )
 
                 # Calculate Approx KL divergence
                 with torch.no_grad():
                     log_ratio = log_probs - old_log_probs
-                    approx_kl_divergence = torch.mean((torch.exp(log_ratio) - 1) - log_ratio).cpu().numpy()
+                    approx_kl_divergence = (
+                        torch.mean((torch.exp(log_ratio) - 1) - log_ratio).cpu().numpy()
+                    )
                     # Keep track of the kl_divergence for logging purposes
                     approx_kl_divergences.append(approx_kl_divergence)
 
                 # Don't know if we want this, but I added it in for completeness.
-                if self.target_kl is not None and approx_kl_divergence > 1.5 * self.target_kl:
+                if (
+                    self.target_kl is not None
+                    and approx_kl_divergence > 1.5 * self.target_kl
+                ):
                     continue_training = False
-                    print(f'Early stopping at step {epoch} for due to reaching max KL divergence {approx_kl_divergence}')
+                    print(
+                        f"Early stopping at step {epoch} for due to reaching max KL divergence {approx_kl_divergence}"
+                    )
                     break
 
                 # Do the actual optimization for each agent
@@ -393,20 +498,25 @@ class PPO:
                     torch.nn.utils.clip_grad_norm_(a.parameters(), self.max_grad_norm)
                     a.optimizer.step()
 
-                
                 # Update the starting index
                 start_index = stop_index
             # If the KL is too high for the current agent, move on to the next agent
             if not continue_training:
                 break
         return pg_losses, value_losses, entropy_losses, self.rewards
-        
 
-    
     def run(self):
-        '''
+        """
         Use this to train policies for all agents
-        '''
+        """
+        # Set trial directory name
+        trial_folder_name = "_".join(("trial", str(self.trial_id)))
+        trial_dir = os.path.join(self.trials_dir, trial_folder_name)
+
+        # Create directory for saving data
+        if not os.path.isdir(trial_dir):
+            os.makedirs(trial_dir)
+
         # Seed probabilities
         self.seed_PPO()
         # Add members for all the stuff PPO needs
@@ -423,11 +533,23 @@ class PPO:
 
             # Train on the data just collected
             pg_losses, value_losses, entropy_losses, rewards = self.train()
-            # Save in some way or plot
-            rew.append(rewards)
-        
-        return self.joint_policies, rew
 
+            # Save in some way or plot
+            rew.append(rewards[0, 0, 0].detach().item())
+
+            if i % 10 == 0:
+                # Save checkpoint
+                with open(os.path.join(trial_dir, "checkpoint.pickle"), "wb") as handle:
+                    pickle.dump(
+                        {
+                            "joint_policies": self.joint_policies,
+                            "rew": rew,
+                        },
+                        handle,
+                        protocol=pickle.HIGHEST_PROTOCOL,
+                    )
+
+        return self.joint_policies, rew
 
     # def run(self):
     #     # TRY NOT TO MODIFY: seeding
