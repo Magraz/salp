@@ -12,9 +12,7 @@ N_GENS_BETWEEN_SAVE = 20
 OUTPUT_MULTIPLIER = 1.0
 
 # EXPERIMENTS
-PPO_G = ExperimentConfig(
-    team_size=3,
-)
+PPO_G = ExperimentConfig()
 
 EXP_DICTS = [
     {"name": "ppo_g", "config": asdict(PPO_G)},
