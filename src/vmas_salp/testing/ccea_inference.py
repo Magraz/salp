@@ -54,18 +54,26 @@ ccea = CooperativeCoevolutionaryAlgorithm(
     **asdict(exp_config),
 )
 
-eval_infos = ccea.evaluateTeams(
-    create_env(
-        batch_dir=batch_dir,
-        device=ccea.device,
-        n_envs=1,
-        n_agents=6,
-        viewer_zoom=1.8,
-        benchmark=False,
-    ),
-    [best_team],
-    render=True,
-    save_render=True,
-)
+agents_trained = 6
+one_shot_up_to = 12
+rewards = []
 
-print(eval_infos[0].team_fitness)
+for n_agents in range(agents_trained, one_shot_up_to + 1):
+
+    eval_infos = ccea.evaluateTeams(
+        create_env(
+            batch_dir=batch_dir,
+            device=ccea.device,
+            n_envs=1,
+            n_agents=n_agents,
+            viewer_zoom=1.8,
+            benchmark=False,
+        ),
+        [best_team],
+        render=False,
+        save_render=False,
+    )
+
+    rewards.append(eval_infos[0].team_fitness)
+
+print(rewards)
