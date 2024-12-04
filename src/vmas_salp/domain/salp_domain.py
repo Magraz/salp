@@ -59,7 +59,7 @@ class SalpDomain(BaseScenario):
         self.random_spawn = kwargs.pop("random_spawn", False)
         self.use_joints = kwargs.pop("use_joints", True)
 
-        self.state_representation = "local_neighbors"
+        self.state_representation = "all_neighbors"
 
         ScenarioUtils.check_kwargs_consumed(kwargs)
 
@@ -151,7 +151,9 @@ class SalpDomain(BaseScenario):
         # Assign neighbors to agents
         for agent in world.agents:
             agent.state.local_neighbors = self.get_local_neighbors(agent, world.joints)
-            agent.state.left_neighbors, agent.state.right_neighbors = self.get_all_neighbors(agent, world.agents)
+            agent.state.left_neighbors, agent.state.right_neighbors = (
+                self.get_all_neighbors(agent, world.agents)
+            )
 
         self.dist_rew = torch.zeros(batch_dim, device=device)
         self.rot_rew = self.dist_rew.clone()
@@ -384,17 +386,17 @@ class SalpDomain(BaseScenario):
 
         for l_neighbor in agent.state.left_neighbors:
             left_neighbors_total_force += l_neighbor.state.force
-        
+
         for r_neighbor in agent.state.right_neighbors:
             right_neighbors_total_force += r_neighbor.state.force
 
         left_norm_force = torch.linalg.norm(
-                left_neighbors_total_force, dim=-1
-            ).unsqueeze(-1) / ((self.n_agents-1) * self.u_multiplier)
+            left_neighbors_total_force, dim=-1
+        ).unsqueeze(-1) / ((self.n_agents - 1) * self.u_multiplier)
 
         right_norm_force = torch.linalg.norm(
-                right_neighbors_total_force, dim=-1
-            ).unsqueeze(-1) / ((self.n_agents-1) * self.u_multiplier)
+            right_neighbors_total_force, dim=-1
+        ).unsqueeze(-1) / ((self.n_agents - 1) * self.u_multiplier)
 
         return torch.cat(
             [
@@ -406,7 +408,7 @@ class SalpDomain(BaseScenario):
             ],
             dim=-1,
         )
-    
+
     def all_agents_representation(self, agent: Agent):
 
         # Calculate heading and distance to target
@@ -422,27 +424,32 @@ class SalpDomain(BaseScenario):
             heading * normalized_dist_to_target, dim=1
         ).unsqueeze(-1)
 
-        # Get all neighbors statesw
-        all_neighbors_states = []
+        # Get all neighbors states
+        r_neighbors_states = []
+        l_neighbors_states = []
 
-        for neighbor in agent.state.all_neighbors:
-            norm_force = torch.linalg.norm(
-                F.normalize(neighbor.state.force), dim=-1
-            ).unsqueeze(-1)
-            all_neighbors_states.extend(
-                [
-                    norm_force,
-                    neighbor.state.rot,
-                ]
+        for r_neighbor in agent.state.right_neighbors:
+            r_neighbors_states.extend(
+                [torch.linalg.norm(r_neighbor.state.force, dim=-1).unsqueeze(-1)]
             )
+
+        for l_neighbor in agent.state.left_neighbors:
+            l_neighbors_states.extend(
+                [torch.linalg.norm(l_neighbor.state.force, dim=-1).unsqueeze(-1)]
+            )
+
+        r_len = torch.zeros_like(agent.state.rot) + len(r_neighbors_states)
+        l_len = torch.zeros_like(agent.state.rot) + len(l_neighbors_states)
 
         return torch.cat(
             [
+                r_len,
+                l_len,
                 norm_dist,
                 heading_difference,
-                torch.linalg.norm(F.normalize(agent.state.force), dim=-1).unsqueeze(-1),
                 agent.state.rot,
-                *all_neighbors_states,
+                *l_neighbors_states,
+                *r_neighbors_states,
             ],
             dim=-1,
         )
@@ -494,12 +501,12 @@ class SalpDomain(BaseScenario):
     def random_point_around_center(center_x, center_y, radius):
         """
         Generates a random (x, y) coordinate around a given circle center within the specified radius.
-        
+
         Parameters:
             center_x (float): The x-coordinate of the circle center.
             center_y (float): The y-coordinate of the circle center.
             radius (float): The radius around the center where the point will be generated.
-        
+
         Returns:
             tuple: A tuple (x, y) representing the random point.
         """
@@ -507,11 +514,11 @@ class SalpDomain(BaseScenario):
         angle = random.uniform(0, 2 * math.pi)
         # Generate a random distance from the center, within the circle
         distance = random.uniform(0, radius)
-        
+
         # Calculate the x and y coordinates
         random_x = center_x + distance * math.cos(angle)
         random_y = center_y + distance * math.sin(angle)
-        
+
         return [random_x, random_y]
 
 

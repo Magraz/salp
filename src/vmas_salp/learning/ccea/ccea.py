@@ -2,6 +2,7 @@ from deap import base
 from deap import creator
 from deap import tools
 import torch
+import torch.nn.functional as F
 
 import random
 
@@ -35,6 +36,8 @@ from vmas_salp.learning.types import (
     Team,
     JointTrajectory,
 )
+
+from vmas_salp.learning.ccea.utils import stack_and_pad_1d_tensors, pad_width
 
 from copy import deepcopy
 import numpy as np
@@ -268,7 +271,28 @@ class CooperativeCoevolutionaryAlgorithm:
             for observation, joint_policy in zip(stacked_obs, joint_policies):
 
                 for i, policy in enumerate(joint_policy):
-                    policy_output = policy.forward(observation[:, i])
+                    match (self.policy_type):
+                        case PolicyEnum.MLP:
+                            policy_output = policy.forward(observation[:, i])
+                        case PolicyEnum.CNN:
+                            left_right_lens = observation[:2, i]
+                            target_data = observation[2:4, i]
+                            left_neighbors_data = observation[
+                                4 : int(left_right_lens[0]) + 4, i
+                            ]
+                            right_neighbors_data = observation[
+                                int(left_right_lens[0])
+                                + 4 : int(left_right_lens[1])
+                                + int(left_right_lens[0])
+                                + 4,
+                                i,
+                            ]
+                            data = stack_and_pad_1d_tensors(
+                                [target_data, left_neighbors_data, right_neighbors_data]
+                            )
+                            data = pad_width(data, 6)
+                            policy_output = policy.forward(data)
+
                     actions[i] = torch.cat(
                         (
                             actions[i],

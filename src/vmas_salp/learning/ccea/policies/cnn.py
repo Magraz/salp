@@ -14,9 +14,9 @@ class CNN_Policy(nn.Module):  # inheriting from nn.Module!
         dim1 = 24
         dim2 = 48
 
-        self.cnn = nn.Conv1d(in_channels=1, out_channels=dim1, kernel_size=4, stride=2)
+        self.cnn = nn.Conv1d(in_channels=3, out_channels=dim1, kernel_size=3, stride=1)
         self.cnn2 = nn.Conv1d(
-            in_channels=dim1, out_channels=dim2, kernel_size=4, stride=2
+            in_channels=dim1, out_channels=dim2, kernel_size=3, stride=1
         )
         self.global_avg_pool = nn.AdaptiveAvgPool1d(output_size=1)
         self.linear = nn.Linear(dim2, 1)
