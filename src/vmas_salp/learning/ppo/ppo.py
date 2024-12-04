@@ -3,6 +3,7 @@ from deap import creator
 from deap import tools
 import torch
 from torch.nn import functional as F
+# torch.autograd.set_detect_anomaly(True)
 
 import random
 
@@ -76,12 +77,10 @@ class PPO:
         # PPO Args
         self.seed = 1
         self.torch_deterministic = True
-        self.total_timesteps = 1000000
+        self.total_timesteps = 10
         self.learning_rate = 3e-4
         self.num_envs = 1
-        self.num_steps = (
-            50  # 2048 # Noah: I am taking this as the number of steps in rollout
-        )
+        self.num_steps = 512  # 2048 # Noah: I am taking this as the number of steps in rollout
         self.episodes = 1000
         self.anneal_lr = True
         self.gamma = 0.99
@@ -220,12 +219,12 @@ class PPO:
                 delta + self.gamma * self.gae_lambda * next_non_terminal * last_gae_lam
             )
             # Calculate GAE
-            q = self.advantages[:, :, k]
-            qq = last_gae_lam
+            # q = self.advantages[:, :, k]
+            # qq = last_gae_lam
             self.advantages[:, :, k] = last_gae_lam
         # Calculate returns for current agent
         self.returns = self.advantages + self.values
-        q = ""
+        # q = ""
 
     def evaluate(self, render=True, save_render=True):
         # Seed probabilities
@@ -255,11 +254,11 @@ class PPO:
                     action, log_prob, _, value = agent.get_action_and_value(
                         self.last_obs[j]
                     )
-                    t = action.cpu().data.numpy()
-                    if action > 1:
-                        action = torch.tensor([[1.0]], device=self.device)
-                    elif action < -1:
-                        action = torch.tensor([[-1.0]], device=self.device)
+                    # t = action.cpu().data.numpy()
+                    # if action > 1:
+                    #     action = torch.tensor([[1.0]], device=self.device)
+                    # elif action < -1:
+                    #     action = torch.tensor([[-1.0]], device=self.device)
 
                     temp_acts[j] = action
                     temp_vals[j] = value
@@ -301,29 +300,27 @@ class PPO:
 
         # Do rollout for num_steps for every agents
         for i in range(self.num_steps):
-            with torch.no_grad():
-                temp_acts = torch.zeros(
-                    (self.n_agents, self.num_envs, self.action_size)
-                )
-                temp_vals = torch.zeros((self.n_agents, self.num_envs))
-                temp_log_probs = torch.zeros((self.n_agents, self.num_envs))
-                # For each policy, get the action, value, and lob probability
-                for j, agent in enumerate(self.joint_policies):
+            temp_acts = torch.zeros((self.n_agents, self.num_envs, self.action_size))
+            temp_vals = torch.zeros((self.n_agents, self.num_envs))
+            temp_log_probs = torch.zeros((self.n_agents, self.num_envs))
+            # For each policy, get the action, value, and log probability
+            for j, agent in enumerate(self.joint_policies):
+                with torch.no_grad():
                     action, log_prob, _, value = agent.get_action_and_value(
                         self.last_obs[j]
                     )
-                    t = action.cpu().data.numpy()
-                    if action > 1:
-                        action = torch.tensor([[1.0]], device=self.device)
-                    elif action < -1:
-                        action = torch.tensor([[-1.0]], device=self.device)
+                # t = action.cpu().data.numpy()
+                # if action > 1:
+                #     action = torch.tensor([[1.0]], device=self.device)
+                # elif action < -1:
+                #     action = torch.tensor([[-1.0]], device=self.device)
 
-                    temp_acts[j] = action
-                    temp_vals[j] = value
-                    temp_log_probs[j] = log_prob
-                    # temp_acts.append(action.cpu())
-                    # temp_vals.append(value.cpu())
-                    # temp_log_probs.append(log_prob.cpu())
+                temp_acts[j] = action
+                temp_vals[j] = value
+                temp_log_probs[j] = log_prob
+                # temp_acts.append(action.cpu())
+                # temp_vals.append(value.cpu())
+                # temp_log_probs.append(log_prob.cpu())
 
             # Take a step in the env with the just computed actions
             obs, rewards, dones, infos = self.env.step(temp_acts)
@@ -357,6 +354,9 @@ class PPO:
                 temp_final_val[k] = agent.get_value(obs[k])
 
         self.calculate_returns_and_advantage(last_values=temp_final_val, dones=dones)
+        
+        # TODO: This is dumb. The training algorithm should not have to reset the environment.
+        self.last_obs = self.env.reset()
 
         return True
 
@@ -373,8 +373,156 @@ class PPO:
         # value_losses = []
         batch_size = self.num_steps // self.num_minibatches
 
-        # TODO: Get rid of this loop and update the indices
-        # for i in range(self.n_agents):
+        # TODO: Just keep track of losses
+        entropy_losses = []
+        pg_losses = []
+        value_losses = []
+        continue_training = True
+        for epoch in range(self.update_epochs):
+            approx_kl_divergences = []
+            start_index = 0
+            # Use these indices to "shuffle" the buffers
+            indices = np.random.permutation(self.num_steps)
+            for stop_index in range(batch_size, self.num_steps, batch_size):
+                for cur_agent_index, cur_agent_policy in enumerate(self.joint_policies):
+                    # Grab batch_size actions for all agents from the current agent buffer
+                    actions = self.actions[cur_agent_index, :, indices[start_index:stop_index]]
+
+                    # Grab observations for all agents (num_agents x num_envs x batch_size x obs_size)
+                    obs = self.obs[cur_agent_index, :, indices[start_index:stop_index]]
+
+                    # Do the forward pass for each agent
+                    # temp_log_probs = []
+                    # temp_entropy = []
+                    # temp_values = []
+                    # for ii, agent in enumerate(self.joint_policies):
+                    _, cur_log_probs, cur_entropy, cur_values = cur_agent_policy.get_action_and_value(obs, actions)
+                    
+                    # temp_log_probs.append(cur_log_probs)
+                    # temp_entropy.append(cur_entropy)
+                    # temp_values.append(cur_values.squeeze(-1))
+
+                    # Convert to tensors (may need to put on cuda)
+                    # Size: num_agents x num_envs x batch
+                    log_probs = cur_log_probs
+                    entropy = cur_entropy
+                    values = cur_values.squeeze(-1)
+                    # log_probs = torch.stack(temp_log_probs)
+                    # entropy = torch.stack(temp_entropy)
+                    # values = torch.stack(temp_values)
+
+                    # Grab advantages (size: num_agents x num_envs x batch)
+                    advantages = self.advantages[cur_agent_index, :, indices[start_index:stop_index]]
+
+                    if self.norm_adv and advantages.shape[1] > 1:
+                        advantages = (advantages - torch.mean(advantages)) / (
+                            torch.std(advantages) + 1e-8
+                        )
+
+                    old_log_probs = self.logprobs[cur_agent_index, :, indices[start_index:stop_index]]
+
+                    # ratio of the old policy and the new (will be 1 for the first iteration (duh))
+                    # TODO: Make sure the first iteration is all ones. It currently has some non-one entries
+                    ratio = torch.exp(log_probs - old_log_probs)
+
+                    # Calculate the clipped surrogate loss for each agent
+                    policy_loss_1 = advantages * ratio
+                    policy_loss_2 = advantages * torch.clamp(
+                        ratio, 1 - self.clip_coef, 1 + self.clip_coef
+                    )
+                    # Should be size num_agents x 1 (mean over the batch dimension)
+                    policy_loss = -torch.min(policy_loss_1, policy_loss_2).mean(dim=-1)
+
+                    # Keep track of some stuff for logging
+                    pg_losses.append(policy_loss)
+                    # clip_fraction = torch.mean((torch.abs(ratio - 1) > self.clip_coef).float()).item()
+                    # clip_fractions.append(clip_fraction)
+
+                    # Calculate Value loss (num_agents x num_envs x batch_size)
+                    old_values = self.values[cur_agent_index, :, indices[start_index:stop_index]]
+                    if self.clip_vloss is None:
+                        values_pred = values
+                    else:
+                        values_pred = old_values + torch.clamp(
+                            values - old_values, -self.clip_vloss, self.clip_vloss
+                        )
+
+                    # Grab the returns for the current agent
+                    returns = self.returns[cur_agent_index, :, indices[start_index:stop_index]]
+                    # Should be size num_agents x 1
+                    value_loss = F.mse_loss(returns, values_pred, reduction="none")
+                    value_loss = torch.mean(value_loss, dim=-1)
+                    # Keep track of for logging purposes
+                    value_losses.append(value_loss)
+
+                    # Now let's do entropy loss (should be num_agents x 1)
+                    if entropy is None:
+                        entropy_loss = -torch.mean(-log_probs, dim=-1)
+                    else:
+                        entropy_loss = -torch.mean(entropy, dim=-1)
+                    # Keep track of for logging purposes
+                    entropy_losses.append(entropy_loss)
+
+                    # Get the total loss for the current agent.
+                    loss = (
+                        policy_loss
+                        + self.ent_coef * entropy_loss
+                        + self.vf_coef * value_loss
+                    )
+
+                    # Calculate Approx KL divergence
+                    with torch.no_grad():
+                        log_ratio = log_probs - old_log_probs
+                        approx_kl_divergence = (
+                            torch.mean((torch.exp(log_ratio) - 1) - log_ratio).cpu().numpy()
+                        )
+                        # Keep track of the kl_divergence for logging purposes
+                        approx_kl_divergences.append(approx_kl_divergence)
+
+                    # Don't know if we want this, but I added it in for completeness.
+                    if (
+                        self.target_kl is not None
+                        and approx_kl_divergence > 1.5 * self.target_kl
+                    ):
+                        continue_training = False
+                        print(
+                            f"Early stopping at step {epoch} for due to reaching max KL divergence {approx_kl_divergence}"
+                        )
+                        break
+
+                    # Do the actual optimization for the current agent agent
+                    # for j, a in enumerate(self.joint_policies):
+                    cur_agent_policy.optimizer.zero_grad()
+                    # cur_agent_loss = loss[j]
+                    # cur_agent_loss.backward()
+                    loss.backward()
+                    # Clip the gradient norm
+                    torch.nn.utils.clip_grad_norm_(cur_agent_policy.parameters(), self.max_grad_norm)
+                    cur_agent_policy.optimizer.step()
+
+                # Update the starting index
+                start_index = stop_index
+            # If the KL is too high for the current agent, move on to the next agent
+            if not continue_training:
+                break
+        # t = self.rewards[0, 0]
+        return pg_losses, value_losses, entropy_losses, torch.mean(self.rewards[0, 0])
+    
+    '''
+    OG train
+    def train(self):
+        """
+        Using data from the buffers, update each policy
+        See the train method in https://github.com/DLR-RM/stable-baselines3/blob/master/stable_baselines3/ppo/ppo.py
+        """
+        # Set models to train
+        self.set_model_modes(False)
+
+        # entropy_losses = []
+        # pg_losses = []
+        # value_losses = []
+        batch_size = self.num_steps // self.num_minibatches
+
         # TODO: Just keep track of losses
         entropy_losses = []
         pg_losses = []
@@ -393,23 +541,23 @@ class PPO:
                 obs = self.obs[:, :, indices[start_index:stop_index]]
 
                 # Do the forward pass for each agent
-                log_probs = []
-                entropy = []
-                values = []
+                temp_log_probs = []
+                temp_entropy = []
+                temp_values = []
                 for ii, agent in enumerate(self.joint_policies):
                     t = obs[ii]
                     _, cur_log_probs, cur_entropy, cur_values = (
                         agent.get_action_and_value(obs[ii], actions[ii])
                     )
-                    log_probs.append(cur_log_probs)
-                    entropy.append(cur_entropy)
-                    values.append(cur_values.squeeze(-1))
+                    temp_log_probs.append(cur_log_probs)
+                    temp_entropy.append(cur_entropy)
+                    temp_values.append(cur_values.squeeze(-1))
 
                 # Convert to tensors (may need to put on cuda)
                 # Size: num_agents x num_envs x batch
-                log_probs = torch.stack(log_probs)
-                entropy = torch.stack(entropy)
-                values = torch.stack(values)
+                log_probs = torch.stack(temp_log_probs)
+                entropy = torch.stack(temp_entropy)
+                values = torch.stack(temp_values)
 
                 # Grab advantages (size: num_agents x num_envs x batch)
                 advantages = self.advantages[:, :, indices[start_index:stop_index]]
@@ -493,7 +641,9 @@ class PPO:
                 # Do the actual optimization for each agent
                 for j, a in enumerate(self.joint_policies):
                     a.optimizer.zero_grad()
-                    loss[j].backward
+                    # cur_agent_loss = loss[j]
+                    # cur_agent_loss.backward()
+                    loss[j].backward()
                     # Clip the gradient norm
                     torch.nn.utils.clip_grad_norm_(a.parameters(), self.max_grad_norm)
                     a.optimizer.step()
@@ -504,6 +654,7 @@ class PPO:
             if not continue_training:
                 break
         return pg_losses, value_losses, entropy_losses, self.rewards
+    '''
 
     def run(self):
         """
@@ -535,7 +686,8 @@ class PPO:
             pg_losses, value_losses, entropy_losses, rewards = self.train()
 
             # Save in some way or plot
-            rew.append(rewards[0, 0, 0].detach().item())
+            # rew.append(rewards[0, 0, 0].detach().item())
+            rew.append(rewards.item())
 
             if i % 10 == 0:
                 # Save checkpoint
@@ -548,7 +700,7 @@ class PPO:
                         handle,
                         protocol=pickle.HIGHEST_PROTOCOL,
                     )
-
+        print(rew)
         return self.joint_policies, rew
 
     # def run(self):
