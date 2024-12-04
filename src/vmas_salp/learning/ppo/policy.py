@@ -57,8 +57,9 @@ class Agent(nn.Module):
         probs = Normal(action_mean, action_std)
         if action is None:
             action = probs.sample()
+            action = torch.clamp(action, 0.0, 1.0)
         return (
-            F.sigmoid(action),
+            action,
             probs.log_prob(action).sum(-1),
             probs.entropy().sum(-1),
             self.critic(x),
