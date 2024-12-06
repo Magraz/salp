@@ -1,6 +1,6 @@
 
 map_size: [3.0, 3.0]
-obs_space_dim: 5
+obs_space_dim: 10
 action_space_dim: 1
 shuffle_agents_positions: true
 

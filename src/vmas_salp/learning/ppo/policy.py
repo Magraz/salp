@@ -57,7 +57,7 @@ class Agent(nn.Module):
         probs = Normal(action_mean, action_std)
         if action is None:
             action = probs.sample()
-            action = torch.clamp(action, 0.0, 1.0)
+            # action = torch.clamp(action, 0.0, 1.0)
         return (
             action,
             probs.log_prob(action).sum(-1),

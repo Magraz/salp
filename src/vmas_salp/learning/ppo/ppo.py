@@ -80,7 +80,7 @@ class PPO:
         self.total_timesteps = 10
         self.learning_rate = 3e-4
         self.num_envs = 1
-        self.num_steps = 512  # 2048 # Noah: I am taking this as the number of steps in rollout
+        self.num_steps = 128  # 2048 # Noah: I am taking this as the number of steps in rollout
         self.episodes = 1000
         self.anneal_lr = True
         self.gamma = 0.99
@@ -89,7 +89,7 @@ class PPO:
         self.update_epochs = 10
         self.norm_adv = True
         self.clip_coef = 0.2
-        self.clip_vloss = True
+        self.clip_vloss = None
         self.ent_coef = 0.0
         self.vf_coef = 0.5
         self.max_grad_norm = 0.5
@@ -322,14 +322,13 @@ class PPO:
                 # temp_vals.append(value.cpu())
                 # temp_log_probs.append(log_prob.cpu())
 
-            # Take a step in the env with the just computed actions
-            obs, rewards, dones, infos = self.env.step(temp_acts)
-            # TODO: Add in dones when num_timesteps is finished
+            # Take a step in the env with clipped actions (note, we save the unclipped actions)
+            clipped_action = torch.clamp(temp_acts, 0.0, 1.0)
+            obs, rewards, dones, infos = self.env.step(clipped_action)
 
             # After getting all the agent's stuff, add to the real buffers
             self.obs[:, :, i] = torch.stack(self.last_obs)
             self.actions[:, :, i] = temp_acts
-            t = torch.stack(rewards)
             self.rewards[:, :, i] = torch.stack(rewards)
             self.dones[:, :, i] = dones
             self.values[:, :, i] = temp_vals
@@ -356,6 +355,13 @@ class PPO:
         self.calculate_returns_and_advantage(last_values=temp_final_val, dones=dones)
         
         # TODO: This is dumb. The training algorithm should not have to reset the environment.
+        # Create a brand new env
+        self.env = create_env(
+            self.batch_dir,
+            device=self.device,
+            n_envs=self.num_envs,
+            n_agents=self.team_size,
+        )
         self.last_obs = self.env.reset()
 
         return True
@@ -700,7 +706,7 @@ class PPO:
                         handle,
                         protocol=pickle.HIGHEST_PROTOCOL,
                     )
-        print(rew)
+        # print(rew)
         return self.joint_policies, rew
 
     # def run(self):
