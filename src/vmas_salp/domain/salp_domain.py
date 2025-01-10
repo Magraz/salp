@@ -59,7 +59,7 @@ class SalpDomain(BaseScenario):
         self.random_spawn = kwargs.pop("random_spawn", False)
         self.use_joints = kwargs.pop("use_joints", True)
 
-        self.state_representation = "all_neighbors"
+        self.state_representation = "local_neighbors"
 
         ScenarioUtils.check_kwargs_consumed(kwargs)
 
